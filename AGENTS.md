@@ -67,6 +67,53 @@ Engineering direction for later approved implementation:
 - Keep agents resilient offline with policy cache and local event queue.
 - Never implement covert surveillance features.
 
+## Current Handoff
+
+Last updated: 2026-05-24.
+
+Completed in the current session:
+
+- Initialized the local Git repository and pushed it to `git@github.com:marcos07-uy/shieldmykids.git`.
+- Set the repository-local Git author email to `marcos.s.lucas@gmail.com`.
+- Pushed the initial project baseline on `main`.
+- Added GitHub repository metadata to the main agent and documentation context files.
+- Added the approved Terraform PR validation workflow at `.github/workflows/terraform-pr.yml`.
+- Committed the Terraform provider lock file at `infrastructure/terraform/environments/dev/.terraform.lock.hcl`.
+- Updated `.gitignore` so Terraform lock files are tracked.
+- Verified locally with Terraform `v1.15.4`:
+  - `terraform fmt -check -recursive infrastructure/terraform`
+  - `terraform init -backend=false -input=false` from `infrastructure/terraform/environments/dev`
+  - `terraform validate -no-color` from `infrastructure/terraform/environments/dev`
+- Pushed commit `aedfacf Add Terraform pull request validation` to `origin/main`.
+
+Remaining next step before continuing implementation:
+
+- Configure GitHub branch protection for `main` so Terraform checks must pass before merge. This was not completed because this environment has SSH Git access only, no `gh` CLI, and no GitHub API token.
+
+Branch protection target:
+
+- Repository: `https://github.com/marcos07-uy/shieldmykids`
+- Branch: `main`
+- Required check: `Terraform PR Checks / Terraform fmt and validate`
+
+Manual GitHub setup path:
+
+1. Open `https://github.com/marcos07-uy/shieldmykids/settings/branches`.
+2. Add a branch rule or ruleset targeting `main`.
+3. Enable pull requests before merging.
+4. Enable required status checks before merging.
+5. Select `Terraform PR Checks / Terraform fmt and validate`.
+6. Save the rule.
+
+If the status check is not listed yet, create a small test pull request that changes a file under `infrastructure/terraform/**` so the workflow runs once, then return to branch protection and select the check.
+
+After branch protection is configured, the next useful engineering tasks are:
+
+1. Add focused tests for `backend/lambda/minimal_api/app.py`.
+2. Decide whether to keep Python for this Lambda slice or record an ADR for a TypeScript/shared-contract backend direction.
+3. Review the Terraform plan before any `terraform apply`.
+4. Replace temporary `X-Dev-Parent-Token` authentication with Cognito when approved.
+
 ## Safety Constraints
 
 The product is for parent/guardian-managed devices. Agents must not help implement spyware behavior.
