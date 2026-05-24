@@ -1,0 +1,150 @@
+# Current State Handoff
+
+Last updated: 2026-05-24
+
+## Repository Location
+
+```text
+/home/marcos/shared/repos/shieldMyKids
+```
+
+The folder is under the SMB share path:
+
+```text
+/home/marcos/shared
+```
+
+## Project Status
+
+Initial documentation baseline is complete. The project has moved into the first implementation slice: minimal backend infrastructure and Lambda API for policy/device enrollment.
+
+The folder is not currently a Git repository. There is no `.git` directory.
+
+## Implemented Files
+
+Minimal backend Lambda:
+
+```text
+backend/lambda/minimal_api/app.py
+backend/lambda/minimal_api/README.md
+```
+
+Terraform:
+
+```text
+infrastructure/terraform/README.md
+infrastructure/terraform/environments/dev/README.md
+infrastructure/terraform/environments/dev/main.tf
+infrastructure/terraform/environments/dev/outputs.tf
+infrastructure/terraform/environments/dev/providers.tf
+infrastructure/terraform/environments/dev/terraform.tfvars.example
+infrastructure/terraform/environments/dev/variables.tf
+infrastructure/terraform/modules/minimal_backend/README.md
+infrastructure/terraform/modules/minimal_backend/main.tf
+infrastructure/terraform/modules/minimal_backend/outputs.tf
+infrastructure/terraform/modules/minimal_backend/variables.tf
+infrastructure/terraform/modules/minimal_backend/versions.tf
+```
+
+Repo hygiene:
+
+```text
+.gitignore
+```
+
+README was updated to mark Phase 0 documentation complete and describe the current implementation boundary.
+
+## Current Backend Scope
+
+The minimal backend supports:
+
+- Create a short-lived pairing code for a child.
+- Store or update the current child policy.
+- Enroll a device by exchanging a pairing code for a device credential.
+- Let an enrolled device fetch its current effective policy.
+
+Routes:
+
+```text
+POST /v1/parent/families/{familyId}/children/{childId}/pairing-codes
+PUT  /v1/parent/families/{familyId}/children/{childId}/policy
+POST /v1/device/enroll
+GET  /v1/device/policy
+```
+
+## Architecture Decisions In This Slice
+
+Infrastructure uses the documented serverless polling MVP direction:
+
+- API Gateway HTTP API
+- Lambda
+- DynamoDB
+- CloudWatch logs
+- Terraform
+
+The Lambda is Python. This is only backend Lambda code. The future Windows agent should not be Python by default; use C#/.NET for the Windows Service plus visible tray/status helper.
+
+Parent authentication is temporarily represented by `X-Dev-Parent-Token`. This is for development only. Cognito remains the intended production parent authentication path.
+
+Device authentication uses:
+
+```text
+Authorization: Device <deviceCredential>
+X-Device-Id: <deviceId>
+```
+
+Pairing codes and device credentials are stored as SHA-256 hashes in DynamoDB.
+
+## Validation Already Performed
+
+No infrastructure was deployed.
+
+Local validation performed:
+
+- Python syntax parse passed.
+- Local mocked Lambda flow passed:
+  - create pairing code
+  - store policy
+  - enroll device
+  - fetch policy with valid device credential
+  - reject invalid device credential
+- Generated Python bytecode cache was removed.
+
+Terraform was not validated because Terraform is not installed on the machine:
+
+```text
+terraform: command not found
+```
+
+## User Boundary For Next Session
+
+Do not deploy infrastructure until the user explicitly approves deployment.
+
+Allowed before approval:
+
+- Create/edit code and Terraform.
+- Run local validation/static checks.
+- Run `terraform fmt`, `terraform init`, `terraform validate`, or `terraform plan` if Terraform is installed and if no resources are applied.
+
+Not allowed before approval:
+
+- `terraform apply`
+- Any AWS deployment or resource mutation
+- Any production credential setup
+
+## Recommended Next Steps
+
+1. Initialize Git and commit the documentation plus minimal backend/IaC baseline.
+2. Install Terraform locally or use a dev container/toolchain to run:
+
+```bash
+terraform fmt -recursive
+terraform init
+terraform validate
+terraform plan
+```
+
+3. Review the Terraform plan with the user before any `apply`.
+4. Add tests for the Lambda handler with a proper test harness instead of an inline mock script.
+5. Replace temporary parent token auth with Cognito when moving beyond dev review.
+6. Start Windows agent design/implementation in C#/.NET after backend plan review.

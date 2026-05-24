@@ -1,0 +1,11 @@
+aws_region       = "us-east-1"
+project_name     = "shield-my-kids"
+environment      = "dev"
+dev_parent_token = "replace-with-a-long-random-dev-token"
+
+allowed_cors_origins = ["*"]
+log_retention_days   = 14
+
+tags = {
+  Owner = "marcos"
+}

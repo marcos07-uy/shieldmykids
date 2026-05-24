@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+.terraform.lock.hcl
+*-minimal-api.zip
+terraform.tfvars
+
+# Local OS/editor files
+.DS_Store
+Thumbs.db
