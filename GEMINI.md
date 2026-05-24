@@ -2,6 +2,13 @@
 
 Shield My Kids is a documentation-first project with an initial minimal backend slice now present.
 
+## Repository
+
+- Local path: `/home/marcos/shared/repos/shieldMyKids`
+- GitHub SSH remote: `git@github.com:marcos07-uy/shieldmykids.git`
+- GitHub web URL: `https://github.com/marcos07-uy/shieldmykids`
+- Default branch: `main`
+
 Before making changes, read:
 
 - [AGENTS.md](AGENTS.md)

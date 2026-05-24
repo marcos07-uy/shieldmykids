@@ -2,6 +2,13 @@
 
 This file provides repository-level instructions for coding agents working on Shield My Kids.
 
+## Repository
+
+- Local path: `/home/marcos/shared/repos/shieldMyKids`
+- GitHub SSH remote: `git@github.com:marcos07-uy/shieldmykids.git`
+- GitHub web URL: `https://github.com/marcos07-uy/shieldmykids`
+- Default branch: `main`
+
 ## Current Phase
 
 The project has completed the initial **Phase 0 documentation baseline** and has moved into a narrow **Phase 1 minimal backend slice**.

@@ -154,7 +154,7 @@ Deliverables:
 ## Prioritized Backlog
 
 1. Keep documentation synchronized with the current implementation boundary.
-2. Initialize source control and commit the documentation plus minimal backend baseline.
+2. Keep the GitHub repository current on `main`.
 3. Install Terraform or use a toolchain with Terraform available.
 4. Run `terraform fmt`, `terraform init`, `terraform validate`, and `terraform plan` for the dev environment.
 5. Review the Terraform plan before any deployment.

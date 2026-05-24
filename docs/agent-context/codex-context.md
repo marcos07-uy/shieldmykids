@@ -1,5 +1,12 @@
 # Codex Agent Context
 
+## Repository
+
+- Local path: `/home/marcos/shared/repos/shieldMyKids`
+- GitHub SSH remote: `git@github.com:marcos07-uy/shieldmykids.git`
+- GitHub web URL: `https://github.com/marcos07-uy/shieldmykids`
+- Default branch: `main`
+
 ## Project Summary
 
 Shield My Kids is a personal parental-control and family screen-time management system.

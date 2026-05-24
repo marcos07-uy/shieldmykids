@@ -14,11 +14,29 @@ The folder is under the SMB share path:
 /home/marcos/shared
 ```
 
+GitHub repository:
+
+```text
+git@github.com:marcos07-uy/shieldmykids.git
+```
+
+Web URL:
+
+```text
+https://github.com/marcos07-uy/shieldmykids
+```
+
+Default branch:
+
+```text
+main
+```
+
 ## Project Status
 
 Initial documentation baseline is complete. The project has moved into the first implementation slice: minimal backend infrastructure and Lambda API for policy/device enrollment.
 
-The folder is not currently a Git repository. There is no `.git` directory.
+The folder is a Git repository. Local `main` tracks `origin/main` at `git@github.com:marcos07-uy/shieldmykids.git`.
 
 ## Implemented Files
 
@@ -134,8 +152,7 @@ Not allowed before approval:
 
 ## Recommended Next Steps
 
-1. Initialize Git and commit the documentation plus minimal backend/IaC baseline.
-2. Install Terraform locally or use a dev container/toolchain to run:
+1. Install Terraform locally or use a dev container/toolchain to run:
 
 ```bash
 terraform fmt -recursive
@@ -144,7 +161,7 @@ terraform validate
 terraform plan
 ```
 
-3. Review the Terraform plan with the user before any `apply`.
-4. Add tests for the Lambda handler with a proper test harness instead of an inline mock script.
-5. Replace temporary parent token auth with Cognito when moving beyond dev review.
-6. Start Windows agent design/implementation in C#/.NET after backend plan review.
+2. Review the Terraform plan with the user before any `apply`.
+3. Add tests for the Lambda handler with a proper test harness instead of an inline mock script.
+4. Replace temporary parent token auth with Cognito when moving beyond dev review.
+5. Start Windows agent design/implementation in C#/.NET after backend plan review.

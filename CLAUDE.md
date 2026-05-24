@@ -2,6 +2,13 @@
 
 This repository has completed the initial Phase 0 documentation baseline and now contains a narrow Phase 1 minimal backend slice.
 
+## Repository
+
+- Local path: `/home/marcos/shared/repos/shieldMyKids`
+- GitHub SSH remote: `git@github.com:marcos07-uy/shieldmykids.git`
+- GitHub web URL: `https://github.com/marcos07-uy/shieldmykids`
+- Default branch: `main`
+
 Follow [AGENTS.md](AGENTS.md), [CODEX.md](CODEX.md), and [docs/agent-context/codex-context.md](docs/agent-context/codex-context.md).
 
 Existing implementation is limited to the minimal backend Lambda and Terraform dev environment already present in the repository.

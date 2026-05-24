@@ -2,6 +2,13 @@
 
 This repository is a planning-first restart of Shield My Kids with an initial minimal backend slice now present.
 
+## Repository
+
+- Local path: `/home/marcos/shared/repos/shieldMyKids`
+- GitHub SSH remote: `git@github.com:marcos07-uy/shieldmykids.git`
+- GitHub web URL: `https://github.com/marcos07-uy/shieldmykids`
+- Default branch: `main`
+
 ## Non-Negotiable Instruction
 
 The Phase 0 documentation baseline is complete. Existing implementation is limited to the minimal backend Lambda and Terraform dev environment already present in the repository.

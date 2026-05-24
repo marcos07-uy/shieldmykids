@@ -4,6 +4,12 @@ Shield My Kids is a personal parental-control and family screen-time management 
 
 The project has completed the initial documentation baseline and is moving into the first implementation slice.
 
+## Repository
+
+- GitHub: [https://github.com/marcos07-uy/shieldmykids](https://github.com/marcos07-uy/shieldmykids)
+- SSH remote: `git@github.com:marcos07-uy/shieldmykids.git`
+- Default branch: `main`
+
 ## Current Status
 
 - Product strategy: drafted in [codex.md](codex.md)

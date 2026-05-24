@@ -1,19 +1,26 @@
 # Copilot Instructions
 
-This repository is in Phase 0.
+This repository has completed the initial Phase 0 documentation baseline and now contains a narrow Phase 1 minimal backend slice.
 
-Only documentation changes are allowed until Phase 0 is explicitly accepted.
+Repository metadata:
 
-Do not suggest or generate:
+- GitHub SSH remote: `git@github.com:marcos07-uy/shieldmykids.git`
+- GitHub web URL: `https://github.com/marcos07-uy/shieldmykids`
+- Default branch: `main`
 
-- Application source code.
-- Backend source code.
+Existing implementation is limited to the minimal backend Lambda and Terraform dev environment already present in the repository.
+
+Do not suggest or generate without explicit user approval:
+
+- Parent dashboard implementation.
 - Windows agent source code.
 - Android agent source code.
-- Terraform resources.
+- Production infrastructure.
 - CI/CD workflows.
 - Package manifests.
 - Build scripts.
+
+Do not deploy infrastructure or mutate AWS resources without explicit user approval.
 
 Project constraints:
 
