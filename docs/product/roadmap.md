@@ -168,5 +168,5 @@ Deliverables:
 13. Implement dashboard MVP.
 14. Implement Windows agent MVP.
 15. Implement Android monitoring MVP.
-16. Add production Terraform, CI/CD, and hardening.
+16. Add production Terraform, deployment CI/CD, and hardening. Terraform PR validation workflow is started.
 

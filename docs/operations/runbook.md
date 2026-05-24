@@ -22,11 +22,18 @@ Environment separation:
 ## Deployment Principles
 
 - Infrastructure changes go through Terraform.
+- Terraform pull requests are validated by GitHub Actions before merge when branch protection requires the workflow check.
 - Application deployments should eventually go through CI/CD.
 - Current dev deployment, if approved, is manual Terraform from `infrastructure/terraform/environments/dev`.
 - Production deploys require successful tests.
 - Secrets are never committed.
 - Rollback steps are documented per service.
+
+## Branch Protection
+
+To prevent unvalidated IaC changes from merging, configure GitHub branch protection for `main` to require the `Terraform PR Checks / Terraform fmt and validate` status check.
+
+This repository contains the workflow definition, but GitHub branch protection is enforced in repository settings, not by the workflow file itself.
 
 ## Monitoring
 

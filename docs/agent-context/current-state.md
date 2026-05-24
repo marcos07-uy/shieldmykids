@@ -64,10 +64,11 @@ infrastructure/terraform/modules/minimal_backend/variables.tf
 infrastructure/terraform/modules/minimal_backend/versions.tf
 ```
 
-Repo hygiene:
+Repo hygiene and automation:
 
 ```text
 .gitignore
+.github/workflows/terraform-pr.yml
 ```
 
 README was updated to mark Phase 0 documentation complete and describe the current implementation boundary.
@@ -128,7 +129,7 @@ Local validation performed:
   - reject invalid device credential
 - Generated Python bytecode cache was removed.
 
-Terraform was not validated because Terraform is not installed on the machine:
+Terraform PR checks are implemented in GitHub Actions, but local Terraform validation was not run because Terraform is not installed on the machine:
 
 ```text
 terraform: command not found

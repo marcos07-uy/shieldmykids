@@ -16,7 +16,7 @@ Do not suggest or generate without explicit user approval:
 - Windows agent source code.
 - Android agent source code.
 - Production infrastructure.
-- CI/CD workflows.
+- New CI/CD workflows beyond the approved Terraform PR validation workflow.
 - Package manifests.
 - Build scripts.
 

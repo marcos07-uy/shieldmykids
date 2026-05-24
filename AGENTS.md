@@ -44,13 +44,14 @@ Allowed in the current minimal backend slice:
 - Maintain the existing Python minimal API Lambda.
 - Maintain the existing Terraform dev environment and `minimal_backend` module.
 - Run local validation and Terraform formatting, init, validate, and plan when tooling is available.
+- Maintain the approved Terraform PR validation GitHub Actions workflow.
 - Add focused tests and documentation for the current slice.
 
 Not allowed without explicit user approval:
 
 - `terraform apply` or any AWS deployment.
 - Production infrastructure.
-- CI/CD workflows.
+- New CI/CD workflows beyond the approved Terraform PR validation workflow.
 - Parent dashboard implementation.
 - Windows or Android agent implementation.
 - New package manifests or build scripts outside the approved slice.

@@ -19,3 +19,15 @@ Production concerns still deferred:
 - Budget alarms.
 - WAF or stricter edge controls.
 - CI/CD.
+
+## Pull Request Validation
+
+Terraform changes are validated by the `Terraform PR Checks` GitHub Actions workflow on pull requests to `main`.
+
+The workflow runs:
+
+- `terraform fmt -check -recursive infrastructure/terraform`
+- `terraform init -backend=false -input=false` from `infrastructure/terraform/environments/dev`
+- `terraform validate -no-color` from `infrastructure/terraform/environments/dev`
+
+To block merges until these checks pass, configure branch protection for `main` and require the `Terraform PR Checks / Terraform fmt and validate` status check.

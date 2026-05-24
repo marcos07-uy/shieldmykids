@@ -59,6 +59,6 @@ The MVP should prioritize:
 - Current backend implementation scope is the minimal API Lambda for pairing codes, policy storage, device enrollment, and policy fetch.
 - Current infrastructure implementation scope is the Terraform dev environment and `minimal_backend` module.
 - No AWS deployment without explicit approval.
-- No parent dashboard, Windows agent, Android agent, production infrastructure, package manifests, build scripts, or CI workflows without explicit approval.
+- No parent dashboard, Windows agent, Android agent, production infrastructure, package manifests, build scripts, or CI workflows beyond the approved Terraform PR validation workflow without explicit approval.
 - Keep architecture diagrams as Markdown/Mermaid unless a later approved implementation needs generated assets.
 
