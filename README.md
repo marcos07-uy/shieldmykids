@@ -41,6 +41,8 @@ The first implementation slice is limited to the minimal backend needed to:
 - Store or update a child policy.
 - Create a short-lived pairing code.
 - Enroll a device.
+- Accept device heartbeats and raw usage event batches.
+- Return a basic parent usage summary from raw usage events.
 - Let that device fetch its current effective policy.
 
 Parent authentication is temporarily represented by a development header token. Cognito remains the intended production parent authentication path.
@@ -59,4 +61,3 @@ The system must not include:
 - Attempts to bypass operating-system security controls.
 
 Child devices must clearly show that monitoring and policy enforcement are enabled.
-

@@ -38,7 +38,7 @@ Do not expand implementation beyond the current minimal backend slice or deploy 
 18. Implement command queue.
 19. Implement command acknowledgement.
 20. Implement audit events.
-21. Implement basic aggregation.
+21. Implement basic aggregation. Started for per-day raw event totals; overlap merging remains deferred.
 22. Add unit tests.
 23. Add authorization tests.
 
@@ -52,7 +52,7 @@ Do not expand implementation beyond the current minimal backend slice or deploy 
 6. Implement child detail.
 7. Implement device enrollment screen.
 8. Implement policy editor.
-9. Implement usage summary.
+9. Implement usage summary. Started in backend only.
 10. Implement device status.
 11. Implement manual lock/unlock.
 12. Implement audit log.
@@ -116,4 +116,3 @@ Do not expand implementation beyond the current minimal backend slice or deploy 
 8. Add backup strategy.
 9. Add security review checklist.
 10. Add cost review checklist.
-

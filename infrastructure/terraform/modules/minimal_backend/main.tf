@@ -176,13 +176,15 @@ resource "aws_iam_role_policy" "minimal_api_lambda" {
         Action = [
           "dynamodb:GetItem",
           "dynamodb:PutItem",
+          "dynamodb:Query",
           "dynamodb:UpdateItem"
         ]
         Resource = [
           aws_dynamodb_table.policies.arn,
           aws_dynamodb_table.devices.arn,
           aws_dynamodb_table.pairing_codes.arn,
-          aws_dynamodb_table.usage_events.arn
+          aws_dynamodb_table.usage_events.arn,
+          "${aws_dynamodb_table.usage_events.arn}/index/*"
         ]
       }
     ]
@@ -254,6 +256,12 @@ resource "aws_apigatewayv2_route" "create_pairing_code" {
 resource "aws_apigatewayv2_route" "put_policy" {
   api_id    = aws_apigatewayv2_api.minimal.id
   route_key = "PUT /v1/parent/families/{familyId}/children/{childId}/policy"
+  target    = "integrations/${aws_apigatewayv2_integration.minimal_api.id}"
+}
+
+resource "aws_apigatewayv2_route" "get_usage_summary" {
+  api_id    = aws_apigatewayv2_api.minimal.id
+  route_key = "GET /v1/parent/families/{familyId}/children/{childId}/usage"
   target    = "integrations/${aws_apigatewayv2_integration.minimal_api.id}"
 }
 

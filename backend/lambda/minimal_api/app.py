@@ -6,6 +6,7 @@ import os
 import secrets
 import time
 import uuid
+from datetime import datetime
 from decimal import Decimal
 
 import boto3
@@ -52,6 +53,10 @@ def handler(event, _context):
         if route_key == "PUT /v1/parent/families/{familyId}/children/{childId}/policy":
             require_dev_parent(event)
             return put_policy(path_params, parse_body(event))
+
+        if route_key == "GET /v1/parent/families/{familyId}/children/{childId}/usage":
+            require_dev_parent(event)
+            return get_usage_summary(path_params, event.get("queryStringParameters") or {})
 
         if route_key == "POST /v1/device/enroll":
             return enroll_device(parse_body(event))
@@ -246,6 +251,68 @@ def build_usage_event(device, batch_id, event, now):
     }
 
 
+def get_usage_summary(path_params, query_params):
+    family_id = require_path_param(path_params, "familyId")
+    child_id = require_path_param(path_params, "childId")
+    usage_date = require_date_query(query_params)
+    events = query_usage_events_for_child(child_id)
+
+    total_minutes = 0
+    event_count = 0
+    device_totals = {}
+    activity_totals = {}
+    app_totals = {}
+
+    for event in events:
+        if event.get("familyId") != family_id or event.get("childId") != child_id:
+            continue
+        if not str(event.get("startedAt", "")).startswith(f"{usage_date}T"):
+            continue
+
+        minutes = usage_event_minutes(event)
+        total_minutes += minutes
+        event_count += 1
+        add_total(device_totals, event.get("deviceId") or "unknown", minutes)
+        add_total(activity_totals, event.get("activityType") or "unknown", minutes)
+        app_name = event.get("appName")
+        if app_name:
+            add_total(app_totals, app_name, minutes)
+
+    return response(
+        200,
+        {
+            "familyId": family_id,
+            "childId": child_id,
+            "date": usage_date,
+            "totalMinutes": total_minutes,
+            "eventCount": event_count,
+            "deviceTotals": device_totals,
+            "activityTotals": activity_totals,
+            "appTotals": app_totals,
+        },
+    )
+
+
+def query_usage_events_for_child(child_id):
+    result = USAGE_EVENTS_TABLE.query(
+        IndexName="childId-index",
+        KeyConditionExpression="childId = :childId",
+        ExpressionAttributeValues={":childId": child_id},
+    )
+    return result.get("Items", [])
+
+
+def usage_event_minutes(event):
+    started_at = parse_iso_time(event.get("startedAt"))
+    ended_at = parse_iso_time(event.get("endedAt"))
+    seconds = max(0, int((ended_at - started_at).total_seconds()))
+    return seconds // 60
+
+
+def add_total(totals, key, minutes):
+    totals[key] = totals.get(key, 0) + minutes
+
+
 def heartbeat_device(device, body):
     now = epoch_seconds()
     policy = get_or_create_default_policy(device["familyId"], device["childId"])
@@ -372,6 +439,18 @@ def require_body_string(body, name):
     return value.strip()
 
 
+def require_date_query(query_params):
+    value = query_params.get("date")
+    if not isinstance(value, str) or not value.strip():
+        raise HttpError(400, "missing_query_parameter", "Missing query parameter: date.")
+    value = value.strip()
+    try:
+        datetime.strptime(value, "%Y-%m-%d")
+    except ValueError:
+        raise HttpError(400, "invalid_date", "Query parameter date must use YYYY-MM-DD.")
+    return value
+
+
 def optional_string(body, name):
     value = body.get(name)
     if value is None:
@@ -415,6 +494,15 @@ def iso_time(epoch):
 
 def normalize_headers(headers):
     return {str(key).lower(): value for key, value in headers.items()}
+
+
+def parse_iso_time(value):
+    if not isinstance(value, str):
+        raise HttpError(400, "invalid_usage_event", "Usage event timestamps must be strings.")
+    try:
+        return datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ")
+    except ValueError:
+        raise HttpError(400, "invalid_usage_event", "Usage event timestamps must use UTC ISO format.")
 
 
 def response(status_code, body):
