@@ -6,6 +6,7 @@ This environment deploys the minimal backend slice:
 - `PUT /v1/parent/families/{familyId}/children/{childId}/policy`
 - `POST /v1/device/enroll`
 - `POST /v1/device/heartbeat`
+- `POST /v1/device/usage-events`
 - `GET /v1/device/policy`
 
 ## Review First
@@ -66,6 +67,23 @@ curl -X POST "$API/v1/device/heartbeat"   -H "Authorization: Device $DEVICE_CRED
     "policyVersion": 1,
     "enforcementState": "allowed",
     "queueDepth": 0
+  }'
+```
+
+Submit usage events as a device:
+
+```bash
+curl -X POST "$API/v1/device/usage-events"   -H "Authorization: Device $DEVICE_CREDENTIAL"   -H "X-Device-Id: $DEVICE_ID"   -H "Content-Type: application/json"   -d '{
+    "batchId": "batch-001",
+    "events": [
+      {
+        "eventId": "evt-001",
+        "startedAt": "2026-05-25T16:00:00Z",
+        "endedAt": "2026-05-25T16:15:00Z",
+        "activityType": "screen",
+        "appName": "Browser"
+      }
+    ]
   }'
 ```
 

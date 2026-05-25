@@ -16,6 +16,7 @@ dynamodb = boto3.resource("dynamodb")
 POLICIES_TABLE = dynamodb.Table(os.environ["POLICIES_TABLE_NAME"])
 DEVICES_TABLE = dynamodb.Table(os.environ["DEVICES_TABLE_NAME"])
 PAIRING_CODES_TABLE = dynamodb.Table(os.environ["PAIRING_CODES_TABLE_NAME"])
+USAGE_EVENTS_TABLE = dynamodb.Table(os.environ["USAGE_EVENTS_TABLE_NAME"])
 
 DEV_PARENT_TOKEN = os.environ.get("DEV_PARENT_TOKEN", "")
 DEFAULT_SYNC_INTERVAL_SECONDS = int(os.environ.get("DEFAULT_SYNC_INTERVAL_SECONDS", "60"))
@@ -58,6 +59,10 @@ def handler(event, _context):
         if route_key == "POST /v1/device/heartbeat":
             device = require_device(event)
             return heartbeat_device(device, parse_body(event))
+
+        if route_key == "POST /v1/device/usage-events":
+            device = require_device(event)
+            return submit_usage_events(device, parse_body(event))
 
         if route_key == "GET /v1/device/policy":
             device = require_device(event)
@@ -176,6 +181,69 @@ def enroll_device(body):
             "syncIntervalSeconds": DEFAULT_SYNC_INTERVAL_SECONDS,
         },
     )
+
+
+def submit_usage_events(device, body):
+    now = epoch_seconds()
+    batch_id = require_body_string(body, "batchId")
+    events = body.get("events")
+    if not isinstance(events, list) or not events:
+        raise HttpError(400, "invalid_usage_batch", "Usage batch must include a non-empty events array.")
+
+    accepted_event_ids = []
+    duplicate_event_ids = []
+    rejected_events = []
+
+    for index, event in enumerate(events):
+        try:
+            usage_event = build_usage_event(device, batch_id, event, now)
+        except HttpError as exc:
+            rejected_events.append({"index": index, "code": exc.code, "message": exc.message})
+            continue
+
+        event_id = usage_event["eventId"]
+        if USAGE_EVENTS_TABLE.get_item(Key={"deviceEventId": usage_event["deviceEventId"]}).get("Item"):
+            duplicate_event_ids.append(event_id)
+            continue
+
+        USAGE_EVENTS_TABLE.put_item(Item=usage_event)
+        accepted_event_ids.append(event_id)
+
+    return response(
+        200,
+        {
+            "acceptedEventIds": accepted_event_ids,
+            "duplicateEventIds": duplicate_event_ids,
+            "rejectedEvents": rejected_events,
+            "syncIntervalSeconds": DEFAULT_SYNC_INTERVAL_SECONDS,
+        },
+    )
+
+
+def build_usage_event(device, batch_id, event, now):
+    if not isinstance(event, dict):
+        raise HttpError(400, "invalid_usage_event", "Usage event must be an object.")
+
+    event_id = require_body_string(event, "eventId")
+    started_at = require_body_string(event, "startedAt")
+    ended_at = require_body_string(event, "endedAt")
+    activity_type = require_body_string(event, "activityType")
+
+    return {
+        "deviceEventId": f"{device['deviceId']}#{event_id}",
+        "eventId": event_id,
+        "batchId": batch_id,
+        "deviceId": device["deviceId"],
+        "familyId": device["familyId"],
+        "childId": device["childId"],
+        "startedAt": started_at,
+        "endedAt": ended_at,
+        "activityType": activity_type,
+        "appName": optional_string(event, "appName"),
+        "appCategory": optional_string(event, "appCategory"),
+        "source": optional_string(event, "source"),
+        "receivedAt": iso_time(now),
+    }
 
 
 def heartbeat_device(device, body):

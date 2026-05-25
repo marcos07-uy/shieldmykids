@@ -18,6 +18,11 @@ output "pairing_codes_table_name" {
   value       = module.minimal_backend.pairing_codes_table_name
 }
 
+output "usage_events_table_name" {
+  description = "Dev usage events table name."
+  value       = module.minimal_backend.usage_events_table_name
+}
+
 output "lambda_function_name" {
   description = "Dev minimal API Lambda function name."
   value       = module.minimal_backend.lambda_function_name
