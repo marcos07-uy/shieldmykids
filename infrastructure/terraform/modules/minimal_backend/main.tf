@@ -96,6 +96,38 @@ resource "aws_dynamodb_table" "pairing_codes" {
   tags = local.common_tags
 }
 
+resource "aws_dynamodb_table" "usage_events" {
+  name         = "${local.name_prefix}-usage-events"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "deviceEventId"
+
+  attribute {
+    name = "deviceEventId"
+    type = "S"
+  }
+
+  attribute {
+    name = "childId"
+    type = "S"
+  }
+
+  global_secondary_index {
+    name            = "childId-index"
+    hash_key        = "childId"
+    projection_type = "ALL"
+  }
+
+  point_in_time_recovery {
+    enabled = false
+  }
+
+  server_side_encryption {
+    enabled = true
+  }
+
+  tags = local.common_tags
+}
+
 resource "aws_iam_role" "minimal_api_lambda" {
   name = "${local.name_prefix}-minimal-api-lambda"
 
@@ -149,7 +181,8 @@ resource "aws_iam_role_policy" "minimal_api_lambda" {
         Resource = [
           aws_dynamodb_table.policies.arn,
           aws_dynamodb_table.devices.arn,
-          aws_dynamodb_table.pairing_codes.arn
+          aws_dynamodb_table.pairing_codes.arn,
+          aws_dynamodb_table.usage_events.arn
         ]
       }
     ]
@@ -171,6 +204,7 @@ resource "aws_lambda_function" "minimal_api" {
       POLICIES_TABLE_NAME           = aws_dynamodb_table.policies.name
       DEVICES_TABLE_NAME            = aws_dynamodb_table.devices.name
       PAIRING_CODES_TABLE_NAME      = aws_dynamodb_table.pairing_codes.name
+      USAGE_EVENTS_TABLE_NAME       = aws_dynamodb_table.usage_events.name
       DEV_PARENT_TOKEN              = var.dev_parent_token
       PAIRING_CODE_TTL_SECONDS      = tostring(var.pairing_code_ttl_seconds)
       DEFAULT_SYNC_INTERVAL_SECONDS = tostring(var.default_sync_interval_seconds)
@@ -232,6 +266,12 @@ resource "aws_apigatewayv2_route" "enroll_device" {
 resource "aws_apigatewayv2_route" "device_heartbeat" {
   api_id    = aws_apigatewayv2_api.minimal.id
   route_key = "POST /v1/device/heartbeat"
+  target    = "integrations/${aws_apigatewayv2_integration.minimal_api.id}"
+}
+
+resource "aws_apigatewayv2_route" "submit_usage_events" {
+  api_id    = aws_apigatewayv2_api.minimal.id
+  route_key = "POST /v1/device/usage-events"
   target    = "integrations/${aws_apigatewayv2_integration.minimal_api.id}"
 }
 

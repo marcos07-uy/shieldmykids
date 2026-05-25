@@ -31,8 +31,8 @@ Do not expand implementation beyond the current minimal backend slice or deploy 
 11. Implement device enrollment. Started.
 12. Implement device credential validation. Started.
 13. Implement heartbeat endpoint. Started.
-14. Implement usage ingestion.
-15. Implement idempotency handling.
+14. Implement usage ingestion. Started.
+15. Implement idempotency handling. Started for usage event IDs.
 16. Implement policy storage. Started.
 17. Implement policy evaluation.
 18. Implement command queue.
