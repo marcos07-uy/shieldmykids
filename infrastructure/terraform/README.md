@@ -23,6 +23,7 @@ Production concerns still deferred:
 ## Pull Request Validation
 
 Terraform changes are validated by the `Terraform PR Checks` GitHub Actions workflow on pull requests to `main`.
+This workflow is the required merge gate for Terraform changes once branch protection is fully configured.
 
 The workflow runs:
 
