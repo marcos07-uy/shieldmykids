@@ -52,6 +52,7 @@ class FakeDynamoDb:
             "policies": FakeTable("childId"),
             "devices": FakeTable("deviceId"),
             "pairing_codes": FakeTable("codeHash"),
+            "usage_events": FakeTable("deviceEventId"),
         }
 
     def Table(self, name):
@@ -69,6 +70,7 @@ class MinimalApiTest(unittest.TestCase):
                 "POLICIES_TABLE_NAME": "policies",
                 "DEVICES_TABLE_NAME": "devices",
                 "PAIRING_CODES_TABLE_NAME": "pairing_codes",
+                "USAGE_EVENTS_TABLE_NAME": "usage_events",
                 "DEV_PARENT_TOKEN": "parent-token",
                 "DEFAULT_SYNC_INTERVAL_SECONDS": "60",
                 "PAIRING_CODE_TTL_SECONDS": "900",
@@ -275,6 +277,150 @@ class MinimalApiTest(unittest.TestCase):
 
         self.assertEqual(400, response["statusCode"])
         self.assertEqual("invalid_field", self.body(response)["error"]["code"])
+
+    def test_usage_events_accepts_valid_batch(self):
+        pairing_code = self.create_pairing_code()
+        enrollment = self.enroll_device(pairing_code)
+
+        event = self.request(
+            "POST /v1/device/usage-events",
+            "POST",
+            body={
+                "batchId": "batch_001",
+                "events": [
+                    {
+                        "eventId": "evt_001",
+                        "startedAt": "2026-05-25T16:00:00Z",
+                        "endedAt": "2026-05-25T16:15:00Z",
+                        "activityType": "screen",
+                        "appName": "Browser",
+                    }
+                ],
+            },
+            headers={
+                "Authorization": f"Device {enrollment['deviceCredential']}",
+                "X-Device-Id": enrollment["deviceId"],
+            },
+        )
+        response = self.app.handler(event, None)
+
+        self.assertEqual(200, response["statusCode"])
+        payload = self.body(response)
+        self.assertEqual(["evt_001"], payload["acceptedEventIds"])
+        self.assertEqual([], payload["duplicateEventIds"])
+        self.assertEqual([], payload["rejectedEvents"])
+        self.assertEqual(60, payload["syncIntervalSeconds"])
+
+        device_event_id = f"{enrollment['deviceId']}#evt_001"
+        stored = self.fake_dynamodb.tables["usage_events"].items[device_event_id]
+        self.assertEqual(device_event_id, stored["deviceEventId"])
+        self.assertEqual("evt_001", stored["eventId"])
+        self.assertEqual("batch_001", stored["batchId"])
+        self.assertEqual(enrollment["deviceId"], stored["deviceId"])
+        self.assertEqual("fam_1", stored["familyId"])
+        self.assertEqual("child_1", stored["childId"])
+        self.assertEqual("screen", stored["activityType"])
+        self.assertEqual("Browser", stored["appName"])
+        self.assertIn("receivedAt", stored)
+
+    def test_usage_events_reports_duplicate_event_ids_idempotently(self):
+        pairing_code = self.create_pairing_code()
+        enrollment = self.enroll_device(pairing_code)
+        headers = {
+            "Authorization": f"Device {enrollment['deviceCredential']}",
+            "X-Device-Id": enrollment["deviceId"],
+        }
+        body = {
+            "batchId": "batch_001",
+            "events": [
+                {
+                    "eventId": "evt_duplicate",
+                    "startedAt": "2026-05-25T16:00:00Z",
+                    "endedAt": "2026-05-25T16:15:00Z",
+                    "activityType": "screen",
+                }
+            ],
+        }
+
+        first_response = self.app.handler(
+            self.request("POST /v1/device/usage-events", "POST", body=body, headers=headers), None
+        )
+        second_response = self.app.handler(
+            self.request("POST /v1/device/usage-events", "POST", body=body, headers=headers), None
+        )
+
+        self.assertEqual(200, first_response["statusCode"])
+        self.assertEqual(["evt_duplicate"], self.body(first_response)["acceptedEventIds"])
+        self.assertEqual(200, second_response["statusCode"])
+        second_payload = self.body(second_response)
+        self.assertEqual([], second_payload["acceptedEventIds"])
+        self.assertEqual(["evt_duplicate"], second_payload["duplicateEventIds"])
+
+    def test_usage_events_reports_invalid_event_fields(self):
+        pairing_code = self.create_pairing_code()
+        enrollment = self.enroll_device(pairing_code)
+
+        event = self.request(
+            "POST /v1/device/usage-events",
+            "POST",
+            body={
+                "batchId": "batch_001",
+                "events": [
+                    {
+                        "eventId": "evt_missing_end",
+                        "startedAt": "2026-05-25T16:00:00Z",
+                        "activityType": "screen",
+                    }
+                ],
+            },
+            headers={
+                "Authorization": f"Device {enrollment['deviceCredential']}",
+                "X-Device-Id": enrollment["deviceId"],
+            },
+        )
+        response = self.app.handler(event, None)
+
+        self.assertEqual(200, response["statusCode"])
+        payload = self.body(response)
+        self.assertEqual([], payload["acceptedEventIds"])
+        self.assertEqual("missing_field", payload["rejectedEvents"][0]["code"])
+        self.assertEqual(0, payload["rejectedEvents"][0]["index"])
+
+    def test_usage_events_rejects_invalid_device_credential(self):
+        pairing_code = self.create_pairing_code()
+        enrollment = self.enroll_device(pairing_code)
+
+        event = self.request(
+            "POST /v1/device/usage-events",
+            "POST",
+            body={"batchId": "batch_001", "events": []},
+            headers={
+                "Authorization": "Device wrong-token",
+                "X-Device-Id": enrollment["deviceId"],
+            },
+        )
+        response = self.app.handler(event, None)
+
+        self.assertEqual(401, response["statusCode"])
+        self.assertEqual("invalid_device_credential", self.body(response)["error"]["code"])
+
+    def test_usage_events_requires_non_empty_events_array(self):
+        pairing_code = self.create_pairing_code()
+        enrollment = self.enroll_device(pairing_code)
+
+        event = self.request(
+            "POST /v1/device/usage-events",
+            "POST",
+            body={"batchId": "batch_001", "events": []},
+            headers={
+                "Authorization": f"Device {enrollment['deviceCredential']}",
+                "X-Device-Id": enrollment["deviceId"],
+            },
+        )
+        response = self.app.handler(event, None)
+
+        self.assertEqual(400, response["statusCode"])
+        self.assertEqual("invalid_usage_batch", self.body(response)["error"]["code"])
 
     def test_base64_json_body_is_accepted_for_policy_update(self):
         event = self.request(
