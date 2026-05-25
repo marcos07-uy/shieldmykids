@@ -23,6 +23,11 @@ output "usage_events_table_name" {
   value       = module.minimal_backend.usage_events_table_name
 }
 
+output "device_commands_table_name" {
+  description = "Dev device commands table name."
+  value       = module.minimal_backend.device_commands_table_name
+}
+
 output "lambda_function_name" {
   description = "Dev minimal API Lambda function name."
   value       = module.minimal_backend.lambda_function_name

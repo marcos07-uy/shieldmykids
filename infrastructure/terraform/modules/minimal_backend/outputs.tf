@@ -23,6 +23,11 @@ output "usage_events_table_name" {
   value       = aws_dynamodb_table.usage_events.name
 }
 
+output "device_commands_table_name" {
+  description = "DynamoDB table storing queued device commands."
+  value       = aws_dynamodb_table.device_commands.name
+}
+
 output "lambda_function_name" {
   description = "Minimal API Lambda function name."
   value       = aws_lambda_function.minimal_api.function_name

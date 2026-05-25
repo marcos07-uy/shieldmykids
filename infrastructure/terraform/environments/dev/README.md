@@ -5,6 +5,8 @@ This environment deploys the minimal backend slice:
 - `POST /v1/parent/families/{familyId}/children/{childId}/pairing-codes`
 - `PUT /v1/parent/families/{familyId}/children/{childId}/policy`
 - `GET /v1/parent/families/{familyId}/children/{childId}/usage?date=YYYY-MM-DD`
+- `POST /v1/parent/families/{familyId}/devices/{deviceId}/lock`
+- `POST /v1/parent/families/{familyId}/devices/{deviceId}/unlock`
 - `POST /v1/device/enroll`
 - `POST /v1/device/heartbeat`
 - `POST /v1/device/usage-events`
@@ -93,6 +95,23 @@ Fetch a basic usage summary as a parent:
 
 ```bash
 curl "$API/v1/parent/families/fam-dev/children/child-dev/usage?date=2026-05-25"   -H "X-Dev-Parent-Token: $DEV_PARENT_TOKEN"
+```
+
+Queue a lock command as a parent:
+
+```bash
+curl -X POST "$API/v1/parent/families/fam-dev/devices/$DEVICE_ID/lock"   -H "X-Dev-Parent-Token: $DEV_PARENT_TOKEN"   -H "Content-Type: application/json"   -d '{
+    "reason": "Homework time",
+    "expiresAt": "2026-05-25T18:00:00Z"
+  }'
+```
+
+Queue an unlock command as a parent:
+
+```bash
+curl -X POST "$API/v1/parent/families/fam-dev/devices/$DEVICE_ID/unlock"   -H "X-Dev-Parent-Token: $DEV_PARENT_TOKEN"   -H "Content-Type: application/json"   -d '{
+    "reason": "Parent override"
+  }'
 ```
 
 Fetch commands as a device:
