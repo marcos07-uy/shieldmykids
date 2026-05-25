@@ -4,9 +4,6 @@ on:
   pull_request:
     branches:
       - main
-    paths:
-      - "infrastructure/terraform/**"
-      - ".github/workflows/terraform-pr.yml"
   workflow_dispatch:
 
 permissions:
