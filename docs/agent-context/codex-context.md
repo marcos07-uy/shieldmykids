@@ -38,7 +38,7 @@ Current backend capabilities:
 - Store or update a child policy.
 - Enroll a device by exchanging a pairing code for a device credential.
 - Accept device heartbeats and raw usage event batches.
-- Return an empty authenticated device command list for the polling contract.
+- Queue manual lock/unlock commands and return queued commands to authenticated devices.
 - Return a basic parent usage summary from raw usage events.
 - Let an enrolled device fetch its current effective policy.
 
