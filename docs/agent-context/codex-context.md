@@ -37,6 +37,8 @@ Current backend capabilities:
 - Create short-lived pairing codes.
 - Store or update a child policy.
 - Enroll a device by exchanging a pairing code for a device credential.
+- Accept device heartbeats and raw usage event batches.
+- Return a basic parent usage summary from raw usage events.
 - Let an enrolled device fetch its current effective policy.
 
 Agents may create or update:

@@ -45,6 +45,12 @@ class FakeTable:
             item[name] = ExpressionAttributeValues[value_key]
         return {}
 
+    def query(self, IndexName, KeyConditionExpression, ExpressionAttributeValues):
+        if IndexName != "childId-index" or KeyConditionExpression != "childId = :childId":
+            raise AssertionError("unsupported query")
+        child_id = ExpressionAttributeValues[":childId"]
+        return {"Items": [item.copy() for item in self.items.values() if item.get("childId") == child_id]}
+
 
 class FakeDynamoDb:
     def __init__(self):
@@ -94,7 +100,7 @@ class MinimalApiTest(unittest.TestCase):
         spec.loader.exec_module(module)
         return module
 
-    def request(self, route_key, method, body=None, headers=None, path_params=None, encoded=False):
+    def request(self, route_key, method, body=None, headers=None, path_params=None, query_params=None, encoded=False):
         raw_body = body
         if body is not None and not isinstance(body, str):
             raw_body = json.dumps(body)
@@ -105,6 +111,7 @@ class MinimalApiTest(unittest.TestCase):
             "requestContext": {"http": {"method": method}},
             "headers": headers or {},
             "pathParameters": path_params or {},
+            "queryStringParameters": query_params or {},
             "body": raw_body,
             "isBase64Encoded": encoded,
         }
@@ -421,6 +428,139 @@ class MinimalApiTest(unittest.TestCase):
 
         self.assertEqual(400, response["statusCode"])
         self.assertEqual("invalid_usage_batch", self.body(response)["error"]["code"])
+
+    def test_parent_usage_summary_returns_totals_for_child_and_date(self):
+        pairing_code = self.create_pairing_code()
+        enrollment = self.enroll_device(pairing_code)
+        headers = {
+            "Authorization": f"Device {enrollment['deviceCredential']}",
+            "X-Device-Id": enrollment["deviceId"],
+        }
+        self.app.handler(
+            self.request(
+                "POST /v1/device/usage-events",
+                "POST",
+                body={
+                    "batchId": "batch_001",
+                    "events": [
+                        {
+                            "eventId": "evt_browser",
+                            "startedAt": "2026-05-25T16:00:00Z",
+                            "endedAt": "2026-05-25T16:15:00Z",
+                            "activityType": "screen",
+                            "appName": "Browser",
+                        },
+                        {
+                            "eventId": "evt_game",
+                            "startedAt": "2026-05-25T17:00:00Z",
+                            "endedAt": "2026-05-25T17:30:00Z",
+                            "activityType": "game",
+                            "appName": "Chess",
+                        },
+                        {
+                            "eventId": "evt_other_date",
+                            "startedAt": "2026-05-24T17:00:00Z",
+                            "endedAt": "2026-05-24T18:00:00Z",
+                            "activityType": "screen",
+                            "appName": "Browser",
+                        },
+                    ],
+                },
+                headers=headers,
+            ),
+            None,
+        )
+        self.fake_dynamodb.tables["usage_events"].put_item(
+            Item={
+                "deviceEventId": "other-device#evt_other_child",
+                "eventId": "evt_other_child",
+                "batchId": "batch_other",
+                "deviceId": "other-device",
+                "familyId": "fam_1",
+                "childId": "child_2",
+                "startedAt": "2026-05-25T16:00:00Z",
+                "endedAt": "2026-05-25T17:00:00Z",
+                "activityType": "screen",
+                "appName": "Browser",
+            }
+        )
+        self.fake_dynamodb.tables["usage_events"].put_item(
+            Item={
+                "deviceEventId": "other-family#evt_other_family",
+                "eventId": "evt_other_family",
+                "batchId": "batch_other",
+                "deviceId": "other-family",
+                "familyId": "fam_2",
+                "childId": "child_1",
+                "startedAt": "2026-05-25T16:00:00Z",
+                "endedAt": "2026-05-25T17:00:00Z",
+                "activityType": "screen",
+                "appName": "Browser",
+            }
+        )
+
+        response = self.app.handler(
+            self.request(
+                "GET /v1/parent/families/{familyId}/children/{childId}/usage",
+                "GET",
+                headers={"X-Dev-Parent-Token": "parent-token"},
+                path_params={"familyId": "fam_1", "childId": "child_1"},
+                query_params={"date": "2026-05-25"},
+            ),
+            None,
+        )
+
+        self.assertEqual(200, response["statusCode"])
+        payload = self.body(response)
+        self.assertEqual("fam_1", payload["familyId"])
+        self.assertEqual("child_1", payload["childId"])
+        self.assertEqual("2026-05-25", payload["date"])
+        self.assertEqual(45, payload["totalMinutes"])
+        self.assertEqual(2, payload["eventCount"])
+        self.assertEqual({enrollment["deviceId"]: 45}, payload["deviceTotals"])
+        self.assertEqual({"screen": 15, "game": 30}, payload["activityTotals"])
+        self.assertEqual({"Browser": 15, "Chess": 30}, payload["appTotals"])
+
+    def test_parent_usage_summary_requires_dev_parent_token(self):
+        response = self.app.handler(
+            self.request(
+                "GET /v1/parent/families/{familyId}/children/{childId}/usage",
+                "GET",
+                headers={"X-Dev-Parent-Token": "wrong"},
+                path_params={"familyId": "fam_1", "childId": "child_1"},
+                query_params={"date": "2026-05-25"},
+            ),
+            None,
+        )
+
+        self.assertEqual(401, response["statusCode"])
+        self.assertEqual("parent_auth_required", self.body(response)["error"]["code"])
+
+    def test_parent_usage_summary_requires_valid_date(self):
+        missing_response = self.app.handler(
+            self.request(
+                "GET /v1/parent/families/{familyId}/children/{childId}/usage",
+                "GET",
+                headers={"X-Dev-Parent-Token": "parent-token"},
+                path_params={"familyId": "fam_1", "childId": "child_1"},
+            ),
+            None,
+        )
+        invalid_response = self.app.handler(
+            self.request(
+                "GET /v1/parent/families/{familyId}/children/{childId}/usage",
+                "GET",
+                headers={"X-Dev-Parent-Token": "parent-token"},
+                path_params={"familyId": "fam_1", "childId": "child_1"},
+                query_params={"date": "05-25-2026"},
+            ),
+            None,
+        )
+
+        self.assertEqual(400, missing_response["statusCode"])
+        self.assertEqual("missing_query_parameter", self.body(missing_response)["error"]["code"])
+        self.assertEqual(400, invalid_response["statusCode"])
+        self.assertEqual("invalid_date", self.body(invalid_response)["error"]["code"])
 
     def test_base64_json_body_is_accepted_for_policy_update(self):
         event = self.request(
