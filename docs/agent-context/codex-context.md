@@ -64,7 +64,7 @@ Agents must not deploy infrastructure or mutate AWS resources without explicit u
 - Required approving reviews are intentionally not enabled while this remains a solo repository.
 - Terraform-related PRs must pass the `Terraform fmt and validate` check from the `Terraform PR Checks` workflow.
 - PR #1 registered the Terraform status check and was merged after it passed.
-- Local SSH push may fail with `Permission denied (publickey)` until SSH credentials are repaired.
+- Local Git SSH access is configured repo-locally with `core.sshCommand` using `~/.ssh/github`; SSH fetch and dry-run push have succeeded.
 
 ## Recommended Technical Direction
 
