@@ -46,10 +46,13 @@ class FakeTable:
         return {}
 
     def query(self, IndexName, KeyConditionExpression, ExpressionAttributeValues):
-        if IndexName != "childId-index" or KeyConditionExpression != "childId = :childId":
-            raise AssertionError("unsupported query")
-        child_id = ExpressionAttributeValues[":childId"]
-        return {"Items": [item.copy() for item in self.items.values() if item.get("childId") == child_id]}
+        if IndexName == "childId-index" and KeyConditionExpression == "childId = :childId":
+            child_id = ExpressionAttributeValues[":childId"]
+            return {"Items": [item.copy() for item in self.items.values() if item.get("childId") == child_id]}
+        if IndexName == "deviceId-index" and KeyConditionExpression == "deviceId = :deviceId":
+            device_id = ExpressionAttributeValues[":deviceId"]
+            return {"Items": [item.copy() for item in self.items.values() if item.get("deviceId") == device_id]}
+        raise AssertionError("unsupported query")
 
 
 class FakeDynamoDb:
@@ -59,6 +62,7 @@ class FakeDynamoDb:
             "devices": FakeTable("deviceId"),
             "pairing_codes": FakeTable("codeHash"),
             "usage_events": FakeTable("deviceEventId"),
+            "device_commands": FakeTable("commandId"),
         }
 
     def Table(self, name):
@@ -77,6 +81,7 @@ class MinimalApiTest(unittest.TestCase):
                 "DEVICES_TABLE_NAME": "devices",
                 "PAIRING_CODES_TABLE_NAME": "pairing_codes",
                 "USAGE_EVENTS_TABLE_NAME": "usage_events",
+                "DEVICE_COMMANDS_TABLE_NAME": "device_commands",
                 "DEV_PARENT_TOKEN": "parent-token",
                 "DEFAULT_SYNC_INTERVAL_SECONDS": "60",
                 "PAIRING_CODE_TTL_SECONDS": "900",
@@ -450,6 +455,101 @@ class MinimalApiTest(unittest.TestCase):
         self.assertEqual(enrollment["deviceId"], payload["deviceId"])
         self.assertEqual([], payload["commands"])
         self.assertEqual(60, payload["syncIntervalSeconds"])
+
+    def test_parent_lock_command_is_returned_to_device_poll(self):
+        pairing_code = self.create_pairing_code()
+        enrollment = self.enroll_device(pairing_code)
+
+        lock_response = self.app.handler(
+            self.request(
+                "POST /v1/parent/families/{familyId}/devices/{deviceId}/lock",
+                "POST",
+                body={"reason": "Homework time", "expiresAt": "2026-05-25T18:00:00Z"},
+                headers={"X-Dev-Parent-Token": "parent-token"},
+                path_params={"familyId": "fam_1", "deviceId": enrollment["deviceId"]},
+            ),
+            None,
+        )
+        commands_response = self.app.handler(
+            self.request(
+                "GET /v1/device/commands",
+                "GET",
+                headers={
+                    "Authorization": f"Device {enrollment['deviceCredential']}",
+                    "X-Device-Id": enrollment["deviceId"],
+                },
+            ),
+            None,
+        )
+
+        self.assertEqual(201, lock_response["statusCode"])
+        command = self.body(lock_response)["command"]
+        self.assertEqual("lock", command["type"])
+        self.assertEqual("queued", command["status"])
+        self.assertEqual("Homework time", command["reason"])
+        self.assertEqual("2026-05-25T18:00:00Z", command["expiresAt"])
+
+        self.assertEqual(200, commands_response["statusCode"])
+        commands = self.body(commands_response)["commands"]
+        self.assertEqual([command], commands)
+
+    def test_parent_unlock_command_is_queued(self):
+        pairing_code = self.create_pairing_code()
+        enrollment = self.enroll_device(pairing_code)
+
+        response = self.app.handler(
+            self.request(
+                "POST /v1/parent/families/{familyId}/devices/{deviceId}/unlock",
+                "POST",
+                body={"reason": "Parent override"},
+                headers={"X-Dev-Parent-Token": "parent-token"},
+                path_params={"familyId": "fam_1", "deviceId": enrollment["deviceId"]},
+            ),
+            None,
+        )
+
+        self.assertEqual(201, response["statusCode"])
+        command = self.body(response)["command"]
+        self.assertEqual("unlock", command["type"])
+        self.assertEqual("queued", command["status"])
+        self.assertEqual("Parent override", command["reason"])
+        self.assertIsNone(command["expiresAt"])
+
+    def test_parent_command_requires_dev_parent_token(self):
+        pairing_code = self.create_pairing_code()
+        enrollment = self.enroll_device(pairing_code)
+
+        response = self.app.handler(
+            self.request(
+                "POST /v1/parent/families/{familyId}/devices/{deviceId}/lock",
+                "POST",
+                body={},
+                headers={"X-Dev-Parent-Token": "wrong"},
+                path_params={"familyId": "fam_1", "deviceId": enrollment["deviceId"]},
+            ),
+            None,
+        )
+
+        self.assertEqual(401, response["statusCode"])
+        self.assertEqual("parent_auth_required", self.body(response)["error"]["code"])
+
+    def test_parent_command_rejects_device_from_other_family(self):
+        pairing_code = self.create_pairing_code()
+        enrollment = self.enroll_device(pairing_code)
+
+        response = self.app.handler(
+            self.request(
+                "POST /v1/parent/families/{familyId}/devices/{deviceId}/lock",
+                "POST",
+                body={},
+                headers={"X-Dev-Parent-Token": "parent-token"},
+                path_params={"familyId": "fam_2", "deviceId": enrollment["deviceId"]},
+            ),
+            None,
+        )
+
+        self.assertEqual(404, response["statusCode"])
+        self.assertEqual("device_not_found", self.body(response)["error"]["code"])
 
     def test_device_commands_requires_device_auth(self):
         response = self.app.handler(self.request("GET /v1/device/commands", "GET"), None)
