@@ -53,6 +53,7 @@ Deliverables:
 
 - Minimal backend Lambda for pairing code, policy, enrollment, and policy fetch workflows. Started.
 - Terraform dev environment for the minimal backend. Started, not deployed.
+- Terraform PR validation workflow. Started and registered as a branch-protection status check.
 - Local backend skeleton.
 - Auth integration. Deferred; dev parent token is temporary.
 - Child profile APIs.
@@ -151,22 +152,26 @@ Deliverables:
 - Backup and recovery plan.
 - Cost alarms.
 
+## Repository Workflow
+
+- `main` is protected and requires pull requests before merging.
+- Required approving reviews are intentionally not enabled while this is a solo repository.
+- Terraform PRs must pass the `Terraform fmt and validate` status check from the `Terraform PR Checks` workflow.
+- PR #1 registered the Terraform check and was merged after it passed.
+
 ## Prioritized Backlog
 
 1. Keep documentation synchronized with the current implementation boundary.
-2. Keep the GitHub repository current on `main`.
-3. Install Terraform or use a toolchain with Terraform available.
-4. Run `terraform fmt`, `terraform init`, `terraform validate`, and `terraform plan` for the dev environment.
-5. Review the Terraform plan before any deployment.
-6. Add focused tests for the minimal Lambda handler.
-7. Create implementation ADRs for backend runtime and authentication transition.
-8. Replace temporary parent token auth with Cognito when approved.
-9. Implement remaining backend MVP APIs.
-10. Implement usage ingestion.
-11. Implement policy evaluation.
-12. Implement command polling.
-13. Implement dashboard MVP.
-14. Implement Windows agent MVP.
-15. Implement Android monitoring MVP.
-16. Add production Terraform, deployment CI/CD, and hardening. Terraform PR validation workflow is started.
-
+2. Keep the GitHub repository current on `main` using pull requests.
+3. Add focused tests for the minimal Lambda handler.
+4. Create implementation ADRs for backend runtime and authentication transition.
+5. Run and review `terraform plan` before any deployment.
+6. Replace temporary parent token auth with Cognito when approved.
+7. Implement remaining backend MVP APIs.
+8. Implement usage ingestion.
+9. Implement policy evaluation.
+10. Implement command polling.
+11. Implement dashboard MVP.
+12. Implement Windows agent MVP.
+13. Implement Android monitoring MVP.
+14. Add production Terraform, deployment CI/CD, and hardening.
