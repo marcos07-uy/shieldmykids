@@ -18,6 +18,7 @@ POLICIES_TABLE = dynamodb.Table(os.environ["POLICIES_TABLE_NAME"])
 DEVICES_TABLE = dynamodb.Table(os.environ["DEVICES_TABLE_NAME"])
 PAIRING_CODES_TABLE = dynamodb.Table(os.environ["PAIRING_CODES_TABLE_NAME"])
 USAGE_EVENTS_TABLE = dynamodb.Table(os.environ["USAGE_EVENTS_TABLE_NAME"])
+DEVICE_COMMANDS_TABLE = dynamodb.Table(os.environ["DEVICE_COMMANDS_TABLE_NAME"])
 
 DEV_PARENT_TOKEN = os.environ.get("DEV_PARENT_TOKEN", "")
 DEFAULT_SYNC_INTERVAL_SECONDS = int(os.environ.get("DEFAULT_SYNC_INTERVAL_SECONDS", "60"))
@@ -57,6 +58,14 @@ def handler(event, _context):
         if route_key == "GET /v1/parent/families/{familyId}/children/{childId}/usage":
             require_dev_parent(event)
             return get_usage_summary(path_params, event.get("queryStringParameters") or {})
+
+        if route_key == "POST /v1/parent/families/{familyId}/devices/{deviceId}/lock":
+            require_dev_parent(event)
+            return queue_device_command(path_params, parse_body(event), "lock")
+
+        if route_key == "POST /v1/parent/families/{familyId}/devices/{deviceId}/unlock":
+            require_dev_parent(event)
+            return queue_device_command(path_params, parse_body(event), "unlock")
 
         if route_key == "POST /v1/device/enroll":
             return enroll_device(parse_body(event))
@@ -340,14 +349,66 @@ def get_device_policy(device):
 
 
 def get_device_commands(device):
+    commands = query_queued_commands_for_device(device["deviceId"])
     return response(
         200,
         {
             "deviceId": device["deviceId"],
-            "commands": [],
+            "commands": commands,
             "syncIntervalSeconds": DEFAULT_SYNC_INTERVAL_SECONDS,
         },
     )
+
+
+def queue_device_command(path_params, body, command_type):
+    now = epoch_seconds()
+    family_id = require_path_param(path_params, "familyId")
+    device_id = require_path_param(path_params, "deviceId")
+    device = DEVICES_TABLE.get_item(Key={"deviceId": device_id}).get("Item")
+    if not device or device.get("familyId") != family_id:
+        raise HttpError(404, "device_not_found", "Device was not found for this family.")
+    if device.get("status") != "active":
+        raise HttpError(409, "device_not_active", "Device is not active.")
+
+    command = {
+        "commandId": f"cmd_{uuid.uuid4().hex}",
+        "deviceId": device_id,
+        "familyId": family_id,
+        "childId": device["childId"],
+        "type": command_type,
+        "status": "queued",
+        "reason": optional_string(body, "reason"),
+        "expiresAt": optional_string(body, "expiresAt"),
+        "createdAt": iso_time(now),
+        "createdByParentId": body.get("createdByParentId") or "dev-parent",
+    }
+    DEVICE_COMMANDS_TABLE.put_item(Item=command)
+    return response(201, {"command": public_command(command)})
+
+
+def query_queued_commands_for_device(device_id):
+    result = DEVICE_COMMANDS_TABLE.query(
+        IndexName="deviceId-index",
+        KeyConditionExpression="deviceId = :deviceId",
+        ExpressionAttributeValues={":deviceId": device_id},
+    )
+    commands = [
+        public_command(command)
+        for command in result.get("Items", [])
+        if command.get("status") == "queued"
+    ]
+    return sorted(commands, key=lambda command: command["createdAt"])
+
+
+def public_command(command):
+    return {
+        "commandId": command["commandId"],
+        "type": command["type"],
+        "status": command["status"],
+        "reason": command.get("reason"),
+        "expiresAt": command.get("expiresAt"),
+        "createdAt": command["createdAt"],
+    }
 
 
 def update_device_heartbeat(device_id, body, now):
