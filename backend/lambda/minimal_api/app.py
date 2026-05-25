@@ -55,6 +55,10 @@ def handler(event, _context):
         if route_key == "POST /v1/device/enroll":
             return enroll_device(parse_body(event))
 
+        if route_key == "POST /v1/device/heartbeat":
+            device = require_device(event)
+            return heartbeat_device(device, parse_body(event))
+
         if route_key == "GET /v1/device/policy":
             device = require_device(event)
             return get_device_policy(device)
@@ -174,9 +178,48 @@ def enroll_device(body):
     )
 
 
+def heartbeat_device(device, body):
+    now = epoch_seconds()
+    policy = get_or_create_default_policy(device["familyId"], device["childId"])
+    update_device_heartbeat(device["deviceId"], body, now)
+
+    return response(
+        200,
+        {
+            "serverTime": iso_time(now),
+            "deviceId": device["deviceId"],
+            "effectivePolicyVersion": policy["version"],
+            "syncIntervalSeconds": DEFAULT_SYNC_INTERVAL_SECONDS,
+            "pendingCommandCount": 0,
+        },
+    )
+
+
 def get_device_policy(device):
     policy = get_or_create_default_policy(device["familyId"], device["childId"])
     return response(200, {"policy": policy, "syncIntervalSeconds": DEFAULT_SYNC_INTERVAL_SECONDS})
+
+
+def update_device_heartbeat(device_id, body, now):
+    values = {
+        ":lastSeenAt": iso_time(now),
+        ":reportedAt": optional_string(body, "reportedAt"),
+        ":agentVersion": optional_string(body, "agentVersion"),
+        ":platformVersion": optional_string(body, "platformVersion"),
+        ":policyVersion": optional_int(body, "policyVersion"),
+        ":enforcementState": optional_string(body, "enforcementState"),
+        ":queueDepth": optional_int(body, "queueDepth"),
+    }
+    DEVICES_TABLE.update_item(
+        Key={"deviceId": device_id},
+        UpdateExpression=(
+            "SET lastSeenAt = :lastSeenAt, reportedAt = :reportedAt, "
+            "agentVersion = :agentVersion, platformVersion = :platformVersion, "
+            "policyVersion = :policyVersion, enforcementState = :enforcementState, "
+            "queueDepth = :queueDepth"
+        ),
+        ExpressionAttributeValues=values,
+    )
 
 
 def get_or_create_default_policy(family_id, child_id):
@@ -259,6 +302,27 @@ def require_body_string(body, name):
     if not isinstance(value, str) or not value.strip():
         raise HttpError(400, "missing_field", f"Missing required string field: {name}.")
     return value.strip()
+
+
+def optional_string(body, name):
+    value = body.get(name)
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise HttpError(400, "invalid_field", f"Field must be a string: {name}.")
+    return value.strip() or None
+
+
+def optional_int(body, name):
+    value = body.get(name)
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        raise HttpError(400, "invalid_field", f"Field must be an integer: {name}.")
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        raise HttpError(400, "invalid_field", f"Field must be an integer: {name}.")
 
 
 def hash_secret(secret):

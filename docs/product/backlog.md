@@ -30,7 +30,7 @@ Do not expand implementation beyond the current minimal backend slice or deploy 
 10. Implement device pairing code APIs. Started.
 11. Implement device enrollment. Started.
 12. Implement device credential validation. Started.
-13. Implement heartbeat endpoint.
+13. Implement heartbeat endpoint. Started.
 14. Implement usage ingestion.
 15. Implement idempotency handling.
 16. Implement policy storage. Started.

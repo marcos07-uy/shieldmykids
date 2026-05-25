@@ -84,6 +84,7 @@ The minimal backend supports:
 - Create a short-lived pairing code for a child.
 - Store or update the current child policy.
 - Enroll a device by exchanging a pairing code for a device credential.
+- Accept authenticated device heartbeats with lightweight status metadata.
 - Let an enrolled device fetch its current effective policy.
 
 Routes:
@@ -92,6 +93,7 @@ Routes:
 POST /v1/parent/families/{familyId}/children/{childId}/pairing-codes
 PUT  /v1/parent/families/{familyId}/children/{childId}/policy
 POST /v1/device/enroll
+POST /v1/device/heartbeat
 GET  /v1/device/policy
 ```
 

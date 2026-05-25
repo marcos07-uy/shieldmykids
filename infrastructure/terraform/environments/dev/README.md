@@ -5,6 +5,7 @@ This environment deploys the minimal backend slice:
 - `POST /v1/parent/families/{familyId}/children/{childId}/pairing-codes`
 - `PUT /v1/parent/families/{familyId}/children/{childId}/policy`
 - `POST /v1/device/enroll`
+- `POST /v1/device/heartbeat`
 - `GET /v1/device/policy`
 
 ## Review First
@@ -53,6 +54,18 @@ curl -X POST "$API/v1/device/enroll"   -H "Content-Type: application/json"   -d 
     "platform": "windows",
     "deviceName": "Child Windows Laptop",
     "agentVersion": "0.1.0"
+  }'
+```
+
+Send a heartbeat as a device:
+
+```bash
+curl -X POST "$API/v1/device/heartbeat"   -H "Authorization: Device $DEVICE_CREDENTIAL"   -H "X-Device-Id: $DEVICE_ID"   -H "Content-Type: application/json"   -d '{
+    "agentVersion": "0.1.0",
+    "platformVersion": "Windows 11",
+    "policyVersion": 1,
+    "enforcementState": "allowed",
+    "queueDepth": 0
   }'
 ```
 
