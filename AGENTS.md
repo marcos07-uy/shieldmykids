@@ -74,7 +74,7 @@ Engineering direction for later approved implementation:
 - Required approving reviews are intentionally not enabled because this is currently a solo repository and the owner cannot approve their own pull requests.
 - Terraform changes are gated by the GitHub Actions check named `Terraform fmt and validate` from the `Terraform PR Checks` workflow.
 - The Terraform check was registered by PR #1, `Register Terraform PR check`, which touched `infrastructure/terraform/README.md` and completed successfully before merge.
-- Local SSH push failed during setup with `Permission denied (publickey)`. If that persists, use the GitHub connector or fix local SSH keys before trying to push branches from this machine.
+- Local SSH push initially failed with `Permission denied (publickey)` because Git was not selecting the non-default `~/.ssh/github` key. This repository now sets `core.sshCommand` to `ssh -i ~/.ssh/github -o IdentitiesOnly=yes`, and `git ls-remote` plus `git push --dry-run` have succeeded.
 
 ## Current Handoff
 
@@ -96,6 +96,7 @@ Completed recently:
 - Configured `main` branch protection manually in GitHub to require pull requests before merge.
 - Registered the Terraform status check with PR #1 and selected the `Terraform fmt and validate` required check.
 - Merged PR #1 after the Terraform PR workflow completed successfully.
+- Fixed repo-local Git SSH key selection for pushes from this machine.
 
 Current recommended next engineering tasks:
 

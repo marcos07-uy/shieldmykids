@@ -59,7 +59,7 @@ The MVP should prioritize:
 - Required approving reviews are intentionally not enabled while this is a solo repository.
 - Terraform-impacting PRs must pass the `Terraform fmt and validate` check from the `Terraform PR Checks` workflow before merge.
 - PR #1 registered that status check and was merged after the workflow passed.
-- Local SSH push may fail with `Permission denied (publickey)` until SSH credentials are fixed; use GitHub connector operations or repair SSH before depending on local `git push`.
+- Local SSH push initially failed because Git was not selecting the non-default `~/.ssh/github` key. The repository now sets `core.sshCommand` to `ssh -i ~/.ssh/github -o IdentitiesOnly=yes`, and SSH fetch plus dry-run push have succeeded.
 
 ## Guardrails
 

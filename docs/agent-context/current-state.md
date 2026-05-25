@@ -36,7 +36,9 @@ main
 
 Initial documentation baseline is complete. The project has moved into the first implementation slice: minimal backend infrastructure and Lambda API for policy/device enrollment.
 
-The folder is a Git repository. Local `main` tracks `origin/main` at `git@github.com:marcos07-uy/shieldmykids.git`, but local SSH push failed during branch-protection setup with `Permission denied (publickey)`. Use the GitHub connector or repair local SSH credentials before relying on local `git push`.
+The folder is a Git repository. Local `main` tracks `origin/main` at `git@github.com:marcos07-uy/shieldmykids.git`.
+
+Local SSH push initially failed during branch-protection setup with `Permission denied (publickey)` because Git was not selecting the non-default `~/.ssh/github` key. This repository now sets `core.sshCommand` to `ssh -i ~/.ssh/github -o IdentitiesOnly=yes`; `git ls-remote` and `git push --dry-run` have succeeded.
 
 `main` is protected in GitHub. Changes should go through pull requests before merge.
 
@@ -147,6 +149,7 @@ Local validation performed:
   - `terraform validate -no-color` from `infrastructure/terraform/environments/dev`
 - GitHub Actions PR validation passed in PR #1:
   - `Terraform PR Checks / Terraform fmt and validate`
+- Git SSH access was fixed repo-locally with `core.sshCommand` using `~/.ssh/github`.
 
 ## User Boundary For Next Session
 
