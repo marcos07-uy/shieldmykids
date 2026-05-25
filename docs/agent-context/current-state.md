@@ -1,6 +1,6 @@
 # Current State Handoff
 
-Last updated: 2026-05-24
+Last updated: 2026-05-25
 
 ## Repository Location
 
@@ -36,7 +36,9 @@ main
 
 Initial documentation baseline is complete. The project has moved into the first implementation slice: minimal backend infrastructure and Lambda API for policy/device enrollment.
 
-The folder is a Git repository. Local `main` tracks `origin/main` at `git@github.com:marcos07-uy/shieldmykids.git`.
+The folder is a Git repository. Local `main` tracks `origin/main` at `git@github.com:marcos07-uy/shieldmykids.git`, but local SSH push failed during branch-protection setup with `Permission denied (publickey)`. Use the GitHub connector or repair local SSH credentials before relying on local `git push`.
+
+`main` is protected in GitHub. Changes should go through pull requests before merge.
 
 ## Implemented Files
 
@@ -114,6 +116,16 @@ X-Device-Id: <deviceId>
 
 Pairing codes and device credentials are stored as SHA-256 hashes in DynamoDB.
 
+## Repository Workflow
+
+Branch protection has been configured manually in GitHub:
+
+- `main` requires pull requests before merging.
+- Required approving reviews are not enabled because this is currently a solo repository and the owner cannot approve their own pull requests.
+- Terraform changes are gated by the required `Terraform fmt and validate` status check from the `Terraform PR Checks` workflow.
+
+PR #1, `Register Terraform PR check`, touched `infrastructure/terraform/README.md` so the workflow would run and the check would appear in branch protection. The workflow passed and PR #1 was merged on 2026-05-25.
+
 ## Validation Already Performed
 
 No infrastructure was deployed.
@@ -128,12 +140,13 @@ Local validation performed:
   - fetch policy with valid device credential
   - reject invalid device credential
 - Generated Python bytecode cache was removed.
-
-Terraform PR checks are implemented in GitHub Actions, but local Terraform validation was not run because Terraform is not installed on the machine:
-
-```text
-terraform: command not found
-```
+- Terraform `v1.15.4` is installed locally.
+- Terraform validation passed locally:
+  - `terraform fmt -check -recursive infrastructure/terraform`
+  - `terraform init -backend=false -input=false` from `infrastructure/terraform/environments/dev`
+  - `terraform validate -no-color` from `infrastructure/terraform/environments/dev`
+- GitHub Actions PR validation passed in PR #1:
+  - `Terraform PR Checks / Terraform fmt and validate`
 
 ## User Boundary For Next Session
 
@@ -143,7 +156,7 @@ Allowed before approval:
 
 - Create/edit code and Terraform.
 - Run local validation/static checks.
-- Run `terraform fmt`, `terraform init`, `terraform validate`, or `terraform plan` if Terraform is installed and if no resources are applied.
+- Run `terraform fmt`, `terraform init`, `terraform validate`, or `terraform plan` if no resources are applied.
 
 Not allowed before approval:
 
@@ -153,16 +166,8 @@ Not allowed before approval:
 
 ## Recommended Next Steps
 
-1. Install Terraform locally or use a dev container/toolchain to run:
-
-```bash
-terraform fmt -recursive
-terraform init
-terraform validate
-terraform plan
-```
-
-2. Review the Terraform plan with the user before any `apply`.
-3. Add tests for the Lambda handler with a proper test harness instead of an inline mock script.
+1. Add tests for the Lambda handler with a proper test harness instead of an inline mock script.
+2. Decide whether to keep Python for this Lambda slice or record an ADR for a TypeScript/shared-contract backend direction.
+3. Run and review `terraform plan` with the user before any `apply`.
 4. Replace temporary parent token auth with Cognito when moving beyond dev review.
-5. Start Windows agent design/implementation in C#/.NET after backend plan review.
+5. Start Windows agent design/implementation in C#/.NET only after backend plan review and explicit approval to expand beyond the current backend slice.
