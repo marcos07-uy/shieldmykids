@@ -6,7 +6,7 @@ This module provisions the first backend slice for Shield My Kids:
 - DynamoDB table for enrolled devices.
 - DynamoDB table for short-lived pairing codes.
 - Python Lambda implementing minimal parent and device APIs.
-- API Gateway HTTP API exposing the Lambda.
+- API Gateway HTTP API exposing the Lambda, including pairing, enrollment, heartbeat, and policy fetch routes.
 - CloudWatch log groups with explicit retention.
 
 ## Development Auth Boundary

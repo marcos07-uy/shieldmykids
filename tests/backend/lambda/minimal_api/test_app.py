@@ -30,13 +30,19 @@ class FakeTable:
 
     def update_item(self, Key, UpdateExpression, ExpressionAttributeValues, ExpressionAttributeNames=None):
         item = self.items[Key[self.key_name]]
-        if "lastSeenAt" in UpdateExpression:
-            item["lastSeenAt"] = ExpressionAttributeValues[":lastSeenAt"]
         if "#status" in UpdateExpression:
             status_name = ExpressionAttributeNames["#status"]
             item[status_name] = ExpressionAttributeValues[":status"]
             item["consumedAt"] = ExpressionAttributeValues[":consumedAt"]
             item["consumedByDeviceId"] = ExpressionAttributeValues[":deviceId"]
+            return {}
+
+        if not UpdateExpression.startswith("SET "):
+            raise AssertionError(f"unsupported update expression: {UpdateExpression}")
+
+        for assignment in UpdateExpression.removeprefix("SET ").split(", "):
+            name, value_key = assignment.split(" = ")
+            item[name] = ExpressionAttributeValues[value_key]
         return {}
 
 
@@ -187,6 +193,88 @@ class MinimalApiTest(unittest.TestCase):
 
         self.assertEqual(401, response["statusCode"])
         self.assertEqual("parent_auth_required", self.body(response)["error"]["code"])
+
+    def test_device_heartbeat_updates_status_and_returns_policy_metadata(self):
+        pairing_code = self.create_pairing_code()
+        enrollment = self.enroll_device(pairing_code)
+
+        event = self.request(
+            "POST /v1/device/heartbeat",
+            "POST",
+            body={
+                "reportedAt": "2026-05-25T16:20:00Z",
+                "agentVersion": "0.1.0",
+                "platformVersion": "Windows 11",
+                "policyVersion": 1,
+                "enforcementState": "allowed",
+                "queueDepth": 2,
+            },
+            headers={
+                "Authorization": f"Device {enrollment['deviceCredential']}",
+                "X-Device-Id": enrollment["deviceId"],
+            },
+        )
+        response = self.app.handler(event, None)
+
+        self.assertEqual(200, response["statusCode"])
+        payload = self.body(response)
+        self.assertEqual(enrollment["deviceId"], payload["deviceId"])
+        self.assertEqual(1, payload["effectivePolicyVersion"])
+        self.assertEqual(60, payload["syncIntervalSeconds"])
+        self.assertEqual(0, payload["pendingCommandCount"])
+        self.assertIn("serverTime", payload)
+
+        device = self.fake_dynamodb.tables["devices"].items[enrollment["deviceId"]]
+        self.assertEqual("2026-05-25T16:20:00Z", device["reportedAt"])
+        self.assertEqual("0.1.0", device["agentVersion"])
+        self.assertEqual("Windows 11", device["platformVersion"])
+        self.assertEqual(1, device["policyVersion"])
+        self.assertEqual("allowed", device["enforcementState"])
+        self.assertEqual(2, device["queueDepth"])
+
+    def test_device_heartbeat_requires_device_auth(self):
+        event = self.request("POST /v1/device/heartbeat", "POST", body={})
+        response = self.app.handler(event, None)
+
+        self.assertEqual(401, response["statusCode"])
+        self.assertEqual("device_auth_required", self.body(response)["error"]["code"])
+
+
+    def test_device_heartbeat_rejects_invalid_credential(self):
+        pairing_code = self.create_pairing_code()
+        enrollment = self.enroll_device(pairing_code)
+
+        event = self.request(
+            "POST /v1/device/heartbeat",
+            "POST",
+            body={},
+            headers={
+                "Authorization": "Device wrong-token",
+                "X-Device-Id": enrollment["deviceId"],
+            },
+        )
+        response = self.app.handler(event, None)
+
+        self.assertEqual(401, response["statusCode"])
+        self.assertEqual("invalid_device_credential", self.body(response)["error"]["code"])
+
+    def test_device_heartbeat_rejects_invalid_field_types(self):
+        pairing_code = self.create_pairing_code()
+        enrollment = self.enroll_device(pairing_code)
+
+        event = self.request(
+            "POST /v1/device/heartbeat",
+            "POST",
+            body={"queueDepth": "not-a-number"},
+            headers={
+                "Authorization": f"Device {enrollment['deviceCredential']}",
+                "X-Device-Id": enrollment["deviceId"],
+            },
+        )
+        response = self.app.handler(event, None)
+
+        self.assertEqual(400, response["statusCode"])
+        self.assertEqual("invalid_field", self.body(response)["error"]["code"])
 
     def test_base64_json_body_is_accepted_for_policy_update(self):
         event = self.request(

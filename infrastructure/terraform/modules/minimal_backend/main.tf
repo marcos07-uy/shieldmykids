@@ -229,6 +229,12 @@ resource "aws_apigatewayv2_route" "enroll_device" {
   target    = "integrations/${aws_apigatewayv2_integration.minimal_api.id}"
 }
 
+resource "aws_apigatewayv2_route" "device_heartbeat" {
+  api_id    = aws_apigatewayv2_api.minimal.id
+  route_key = "POST /v1/device/heartbeat"
+  target    = "integrations/${aws_apigatewayv2_integration.minimal_api.id}"
+}
+
 resource "aws_apigatewayv2_route" "get_device_policy" {
   api_id    = aws_apigatewayv2_api.minimal.id
   route_key = "GET /v1/device/policy"
