@@ -8,6 +8,7 @@ This environment deploys the minimal backend slice:
 - `POST /v1/device/enroll`
 - `POST /v1/device/heartbeat`
 - `POST /v1/device/usage-events`
+- `GET /v1/device/commands`
 - `GET /v1/device/policy`
 
 ## Review First
@@ -92,6 +93,12 @@ Fetch a basic usage summary as a parent:
 
 ```bash
 curl "$API/v1/parent/families/fam-dev/children/child-dev/usage?date=2026-05-25"   -H "X-Dev-Parent-Token: $DEV_PARENT_TOKEN"
+```
+
+Fetch commands as a device:
+
+```bash
+curl "$API/v1/device/commands"   -H "Authorization: Device $DEVICE_CREDENTIAL"   -H "X-Device-Id: $DEVICE_ID"
 ```
 
 Fetch policy as a device:

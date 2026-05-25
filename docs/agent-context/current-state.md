@@ -87,6 +87,7 @@ The minimal backend supports:
 - Enroll a device by exchanging a pairing code for a device credential.
 - Accept authenticated device heartbeats with lightweight status metadata.
 - Accept authenticated raw usage event batches with event-level idempotency.
+- Return an authenticated empty device command list for the polling contract.
 - Let an enrolled device fetch its current effective policy.
 
 Routes:
@@ -98,6 +99,7 @@ GET  /v1/parent/families/{familyId}/children/{childId}/usage
 POST /v1/device/enroll
 POST /v1/device/heartbeat
 POST /v1/device/usage-events
+GET  /v1/device/commands
 GET  /v1/device/policy
 ```
 
