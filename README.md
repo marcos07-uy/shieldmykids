@@ -42,6 +42,7 @@ The first implementation slice is limited to the minimal backend needed to:
 - Create a short-lived pairing code.
 - Enroll a device.
 - Accept device heartbeats and raw usage event batches.
+- Return an empty authenticated device command list for the polling contract.
 - Return a basic parent usage summary from raw usage events.
 - Let that device fetch its current effective policy.
 

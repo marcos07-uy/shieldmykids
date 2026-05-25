@@ -69,6 +69,10 @@ def handler(event, _context):
             device = require_device(event)
             return submit_usage_events(device, parse_body(event))
 
+        if route_key == "GET /v1/device/commands":
+            device = require_device(event)
+            return get_device_commands(device)
+
         if route_key == "GET /v1/device/policy":
             device = require_device(event)
             return get_device_policy(device)
@@ -333,6 +337,17 @@ def heartbeat_device(device, body):
 def get_device_policy(device):
     policy = get_or_create_default_policy(device["familyId"], device["childId"])
     return response(200, {"policy": policy, "syncIntervalSeconds": DEFAULT_SYNC_INTERVAL_SECONDS})
+
+
+def get_device_commands(device):
+    return response(
+        200,
+        {
+            "deviceId": device["deviceId"],
+            "commands": [],
+            "syncIntervalSeconds": DEFAULT_SYNC_INTERVAL_SECONDS,
+        },
+    )
 
 
 def update_device_heartbeat(device_id, body, now):

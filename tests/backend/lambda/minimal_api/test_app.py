@@ -429,6 +429,53 @@ class MinimalApiTest(unittest.TestCase):
         self.assertEqual(400, response["statusCode"])
         self.assertEqual("invalid_usage_batch", self.body(response)["error"]["code"])
 
+    def test_device_commands_returns_empty_command_list(self):
+        pairing_code = self.create_pairing_code()
+        enrollment = self.enroll_device(pairing_code)
+
+        response = self.app.handler(
+            self.request(
+                "GET /v1/device/commands",
+                "GET",
+                headers={
+                    "Authorization": f"Device {enrollment['deviceCredential']}",
+                    "X-Device-Id": enrollment["deviceId"],
+                },
+            ),
+            None,
+        )
+
+        self.assertEqual(200, response["statusCode"])
+        payload = self.body(response)
+        self.assertEqual(enrollment["deviceId"], payload["deviceId"])
+        self.assertEqual([], payload["commands"])
+        self.assertEqual(60, payload["syncIntervalSeconds"])
+
+    def test_device_commands_requires_device_auth(self):
+        response = self.app.handler(self.request("GET /v1/device/commands", "GET"), None)
+
+        self.assertEqual(401, response["statusCode"])
+        self.assertEqual("device_auth_required", self.body(response)["error"]["code"])
+
+    def test_device_commands_rejects_invalid_credential(self):
+        pairing_code = self.create_pairing_code()
+        enrollment = self.enroll_device(pairing_code)
+
+        response = self.app.handler(
+            self.request(
+                "GET /v1/device/commands",
+                "GET",
+                headers={
+                    "Authorization": "Device wrong-token",
+                    "X-Device-Id": enrollment["deviceId"],
+                },
+            ),
+            None,
+        )
+
+        self.assertEqual(401, response["statusCode"])
+        self.assertEqual("invalid_device_credential", self.body(response)["error"]["code"])
+
     def test_parent_usage_summary_returns_totals_for_child_and_date(self):
         pairing_code = self.create_pairing_code()
         enrollment = self.enroll_device(pairing_code)
