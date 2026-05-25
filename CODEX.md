@@ -53,6 +53,14 @@ The MVP should prioritize:
 - Agent instructions.
 - ADRs.
 
+## Repository Workflow
+
+- `main` is protected and changes should go through pull requests.
+- Required approving reviews are intentionally not enabled while this is a solo repository.
+- Terraform-impacting PRs must pass the `Terraform fmt and validate` check from the `Terraform PR Checks` workflow before merge.
+- PR #1 registered that status check and was merged after the workflow passed.
+- Local SSH push may fail with `Permission denied (publickey)` until SSH credentials are fixed; use GitHub connector operations or repair SSH before depending on local `git push`.
+
 ## Guardrails
 
 - Keep documentation synchronized with the actual repository state.
@@ -61,4 +69,3 @@ The MVP should prioritize:
 - No AWS deployment without explicit approval.
 - No parent dashboard, Windows agent, Android agent, production infrastructure, package manifests, build scripts, or CI workflows beyond the approved Terraform PR validation workflow without explicit approval.
 - Keep architecture diagrams as Markdown/Mermaid unless a later approved implementation needs generated assets.
-

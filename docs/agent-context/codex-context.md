@@ -58,6 +58,14 @@ Agents must not create without explicit user approval:
 
 Agents must not deploy infrastructure or mutate AWS resources without explicit user approval.
 
+## Repository Workflow
+
+- `main` is protected and changes should be proposed through pull requests.
+- Required approving reviews are intentionally not enabled while this remains a solo repository.
+- Terraform-related PRs must pass the `Terraform fmt and validate` check from the `Terraform PR Checks` workflow.
+- PR #1 registered the Terraform status check and was merged after it passed.
+- Local SSH push may fail with `Permission denied (publickey)` until SSH credentials are repaired.
+
 ## Recommended Technical Direction
 
 The current recommended MVP direction is:
@@ -117,4 +125,3 @@ Later Android enforcement may use Device Owner or Android Management API.
 - Keep device protocol explicit and versioned.
 - Prefer simple DynamoDB access patterns over premature relational modeling.
 - Document every major tradeoff in an ADR.
-

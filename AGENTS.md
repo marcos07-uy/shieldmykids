@@ -67,11 +67,20 @@ Engineering direction for later approved implementation:
 - Keep agents resilient offline with policy cache and local event queue.
 - Never implement covert surveillance features.
 
+## Repository Workflow
+
+- Use pull requests for changes before merging to `main`.
+- Branch protection for `main` requires pull requests before merge.
+- Required approving reviews are intentionally not enabled because this is currently a solo repository and the owner cannot approve their own pull requests.
+- Terraform changes are gated by the GitHub Actions check named `Terraform fmt and validate` from the `Terraform PR Checks` workflow.
+- The Terraform check was registered by PR #1, `Register Terraform PR check`, which touched `infrastructure/terraform/README.md` and completed successfully before merge.
+- Local SSH push failed during setup with `Permission denied (publickey)`. If that persists, use the GitHub connector or fix local SSH keys before trying to push branches from this machine.
+
 ## Current Handoff
 
-Last updated: 2026-05-24.
+Last updated: 2026-05-25.
 
-Completed in the current session:
+Completed recently:
 
 - Initialized the local Git repository and pushed it to `git@github.com:marcos07-uy/shieldmykids.git`.
 - Set the repository-local Git author email to `marcos.s.lucas@gmail.com`.
@@ -84,30 +93,11 @@ Completed in the current session:
   - `terraform fmt -check -recursive infrastructure/terraform`
   - `terraform init -backend=false -input=false` from `infrastructure/terraform/environments/dev`
   - `terraform validate -no-color` from `infrastructure/terraform/environments/dev`
-- Pushed commit `aedfacf Add Terraform pull request validation` to `origin/main`.
+- Configured `main` branch protection manually in GitHub to require pull requests before merge.
+- Registered the Terraform status check with PR #1 and selected the `Terraform fmt and validate` required check.
+- Merged PR #1 after the Terraform PR workflow completed successfully.
 
-Remaining next step before continuing implementation:
-
-- Configure GitHub branch protection for `main` so Terraform checks must pass before merge. This was not completed because this environment has SSH Git access only, no `gh` CLI, and no GitHub API token.
-
-Branch protection target:
-
-- Repository: `https://github.com/marcos07-uy/shieldmykids`
-- Branch: `main`
-- Required check: `Terraform PR Checks / Terraform fmt and validate`
-
-Manual GitHub setup path:
-
-1. Open `https://github.com/marcos07-uy/shieldmykids/settings/branches`.
-2. Add a branch rule or ruleset targeting `main`.
-3. Enable pull requests before merging.
-4. Enable required status checks before merging.
-5. Select `Terraform PR Checks / Terraform fmt and validate`.
-6. Save the rule.
-
-If the status check is not listed yet, create a small test pull request that changes a file under `infrastructure/terraform/**` so the workflow runs once, then return to branch protection and select the check.
-
-After branch protection is configured, the next useful engineering tasks are:
+Current recommended next engineering tasks:
 
 1. Add focused tests for `backend/lambda/minimal_api/app.py`.
 2. Decide whether to keep Python for this Lambda slice or record an ADR for a TypeScript/shared-contract backend direction.
@@ -136,4 +126,3 @@ Allowed product behavior:
 - Usage aggregation.
 - Policy enforcement using documented OS capabilities.
 - Parent-controlled lock/unlock and limit configuration.
-
