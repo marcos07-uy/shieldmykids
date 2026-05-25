@@ -283,6 +283,12 @@ resource "aws_apigatewayv2_route" "submit_usage_events" {
   target    = "integrations/${aws_apigatewayv2_integration.minimal_api.id}"
 }
 
+resource "aws_apigatewayv2_route" "get_device_commands" {
+  api_id    = aws_apigatewayv2_api.minimal.id
+  route_key = "GET /v1/device/commands"
+  target    = "integrations/${aws_apigatewayv2_integration.minimal_api.id}"
+}
+
 resource "aws_apigatewayv2_route" "get_device_policy" {
   api_id    = aws_apigatewayv2_api.minimal.id
   route_key = "GET /v1/device/policy"
