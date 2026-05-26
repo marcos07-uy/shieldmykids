@@ -47,7 +47,7 @@ Current local tests:
 
 - `tests/backend/lambda/minimal_api/test_app.py`
 - `python3 -m unittest tests/backend/lambda/minimal_api/test_app.py`
-- 35 tests passed locally on the audit-events branch after PR #11 merged.
+- 35 tests passed locally after PR #12 merged.
 
 Agents may create or update:
 
@@ -79,7 +79,7 @@ Agents must not deploy infrastructure or mutate AWS resources without explicit u
 
 ## Current Recommended Next Step
 
-After audit events merge, review a Terraform plan from the separate AWS-credentialed deployment machine before any apply. For local-only development, the next likely backend decision is replacing the temporary parent token with Cognito or deciding the broader backend runtime/shared-contract direction before adding substantial new APIs.
+After audit events merge, review a Terraform plan from the separate AWS-credentialed deployment machine before any apply. ADR-0004 keeps the current Python Lambda for local hardening of the existing minimal slice until that deployment decision is made; broader TypeScript/shared-contract work remains deferred.
 
 Keep command execution/enforcement behavior in agents out of scope until explicitly approved.
 

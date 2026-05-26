@@ -121,12 +121,18 @@ Infrastructure uses the documented serverless polling MVP direction:
 
 The Lambda is Python. This is only backend Lambda code. The future Windows agent should not be Python by default; use C#/.NET for the Windows Service plus visible tray/status helper.
 
-ADR-0003 records the current runtime/auth transition decision:
+ADR-0003 records the runtime/auth transition boundary for the narrow Phase 1 slice:
 
-- Keep the Python minimal API Lambda for the narrow Phase 1 slice.
+- Keep the Python minimal API Lambda for the current Phase 1 slice.
 - Prefer TypeScript/shared contracts before broader backend expansion unless a later ADR changes that.
 - Keep `X-Dev-Parent-Token` local/dev-only.
 - Replace parent auth with Cognito before real parent/dashboard use.
+
+ADR-0004 records the Phase 1 runtime continuity decision:
+
+- Keep the current Python Lambda for local-only completion and hardening of the existing minimal backend slice until after Terraform plan review and the first dev deployment decision.
+- Do not add substantial new parent dashboard APIs, child profile management APIs, or agent implementation in Python before a separate runtime/shared-contract decision.
+- Keep TypeScript as the preferred direction for broader backend services and shared API contracts.
 
 Parent authentication is temporarily represented by `X-Dev-Parent-Token`. This is for development only. Cognito remains the intended production parent authentication path.
 
@@ -164,7 +170,7 @@ Local validation performed:
 - Python syntax parse passed.
 - Focused unittest suite passed:
   - `python3 -m unittest tests/backend/lambda/minimal_api/test_app.py`
-  - 35 tests passed locally on the audit-events branch after PR #11 merged.
+  - 35 tests passed locally after PR #12 merged.
 - Local mocked Lambda flow covers:
   - create pairing code
   - store policy
@@ -195,6 +201,7 @@ Local validation performed:
   - PR #8: device command polling skeleton.
   - PR #9: manual device command queueing.
   - PR #11: device command acknowledgement.
+  - PR #12: minimal backend audit events.
 
 Local sandbox note:
 
@@ -221,7 +228,7 @@ Not allowed before approval:
 ## Recommended Next Steps
 
 1. Run and review `terraform plan` from the separate AWS-credentialed deployment machine before any `apply`.
-2. Replace temporary parent token auth with Cognito when moving beyond dev review.
-3. Decide whether the next broader backend slice should remain in Python or move to TypeScript/shared contracts before adding substantial new APIs.
-4. Add deeper policy evaluation only after the runtime/auth boundary is decided.
+2. Continue only small hardening fixes in the current Python Lambda until the first dev deployment decision is made.
+3. Replace temporary parent token auth with Cognito when moving beyond dev review.
+4. Add deeper policy evaluation only after the deployment/runtime/auth boundary is decided.
 5. Start Windows agent design/implementation in C#/.NET only after backend plan review and explicit approval to expand beyond the current backend slice.

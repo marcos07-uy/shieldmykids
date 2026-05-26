@@ -67,7 +67,7 @@ Deliverables:
 
 Key decisions before continuing beyond the minimal slice:
 
-- Runtime and framework.
+- Runtime and framework. ADR-0004 keeps the current Python Lambda for local hardening before first dev deployment review; broader TypeScript/shared-contract work remains deferred.
 - DynamoDB table design.
 - API validation library.
 - Local development approach.
