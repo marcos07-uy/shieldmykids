@@ -19,6 +19,7 @@ DEVICES_TABLE = dynamodb.Table(os.environ["DEVICES_TABLE_NAME"])
 PAIRING_CODES_TABLE = dynamodb.Table(os.environ["PAIRING_CODES_TABLE_NAME"])
 USAGE_EVENTS_TABLE = dynamodb.Table(os.environ["USAGE_EVENTS_TABLE_NAME"])
 DEVICE_COMMANDS_TABLE = dynamodb.Table(os.environ["DEVICE_COMMANDS_TABLE_NAME"])
+AUDIT_EVENTS_TABLE = dynamodb.Table(os.environ["AUDIT_EVENTS_TABLE_NAME"])
 
 DEV_PARENT_TOKEN = os.environ.get("DEV_PARENT_TOKEN", "")
 DEFAULT_SYNC_INTERVAL_SECONDS = int(os.environ.get("DEFAULT_SYNC_INTERVAL_SECONDS", "60"))
@@ -58,6 +59,10 @@ def handler(event, _context):
         if route_key == "GET /v1/parent/families/{familyId}/children/{childId}/usage":
             require_dev_parent(event)
             return get_usage_summary(path_params, event.get("queryStringParameters") or {})
+
+        if route_key == "GET /v1/parent/families/{familyId}/audit-events":
+            require_dev_parent(event)
+            return list_audit_events(path_params)
 
         if route_key == "POST /v1/parent/families/{familyId}/devices/{deviceId}/lock":
             require_dev_parent(event)
@@ -144,6 +149,16 @@ def put_policy(path_params, body):
     }
 
     POLICIES_TABLE.put_item(Item=policy)
+    record_audit_event(
+        family_id=family_id,
+        actor_type="parent",
+        actor_id=policy["createdByParentId"],
+        action="policy.updated",
+        target_type="policy",
+        target_id=policy["policyId"],
+        metadata={"childId": child_id, "version": version},
+        now=now,
+    )
     return response(200, {"policy": policy})
 
 
@@ -194,6 +209,21 @@ def enroll_device(body):
     )
 
     policy = get_or_create_default_policy(family_id, child_id)
+    record_audit_event(
+        family_id=family_id,
+        actor_type="device",
+        actor_id=device_id,
+        action="device.enrolled",
+        target_type="device",
+        target_id=device_id,
+        metadata={
+            "childId": child_id,
+            "platform": device["platform"],
+            "deviceName": device["name"],
+            "agentVersion": device["agentVersion"],
+        },
+        now=now,
+    )
     return response(
         201,
         {
@@ -203,6 +233,17 @@ def enroll_device(body):
             "syncIntervalSeconds": DEFAULT_SYNC_INTERVAL_SECONDS,
         },
     )
+
+
+def list_audit_events(path_params):
+    family_id = require_path_param(path_params, "familyId")
+    result = AUDIT_EVENTS_TABLE.query(
+        IndexName="familyId-index",
+        KeyConditionExpression="familyId = :familyId",
+        ExpressionAttributeValues={":familyId": family_id},
+    )
+    events = sorted(result.get("Items", []), key=lambda event: event["timestamp"], reverse=True)
+    return response(200, {"familyId": family_id, "auditEvents": events})
 
 
 def submit_usage_events(device, body):
@@ -387,6 +428,21 @@ def queue_device_command(path_params, body, command_type):
         "createdByParentId": body.get("createdByParentId") or "dev-parent",
     }
     DEVICE_COMMANDS_TABLE.put_item(Item=command)
+    record_audit_event(
+        family_id=family_id,
+        actor_type="parent",
+        actor_id=command["createdByParentId"],
+        action="device_command.queued",
+        target_type="device_command",
+        target_id=command["commandId"],
+        metadata={
+            "childId": device["childId"],
+            "deviceId": device_id,
+            "commandType": command_type,
+            "expiresAt": command["expiresAt"],
+        },
+        now=now,
+    )
     return response(201, {"command": public_command(command)})
 
 
@@ -441,7 +497,39 @@ def acknowledge_device_command(device, path_params, body):
         "errorCode": values[":errorCode"],
         "diagnostics": values[":diagnostics"],
     }
+    record_audit_event(
+        family_id=command["familyId"],
+        actor_type="device",
+        actor_id=device["deviceId"],
+        action="device_command.acknowledged",
+        target_type="device_command",
+        target_id=command_id,
+        metadata={
+            "childId": command["childId"],
+            "deviceId": device["deviceId"],
+            "commandType": command["type"],
+            "status": ack_status,
+            "errorCode": values[":errorCode"],
+        },
+        now=now,
+    )
     return response(200, {"command": public_command_ack(updated_command)})
+
+
+def record_audit_event(family_id, actor_type, actor_id, action, target_type, target_id, metadata, now):
+    AUDIT_EVENTS_TABLE.put_item(
+        Item={
+            "auditId": f"audit_{uuid.uuid4().hex}",
+            "familyId": family_id,
+            "actorType": actor_type,
+            "actorId": actor_id,
+            "action": action,
+            "targetType": target_type,
+            "targetId": target_id,
+            "timestamp": iso_time(now),
+            "metadata": metadata,
+        }
+    )
 
 
 def public_command(command):

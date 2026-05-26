@@ -5,6 +5,7 @@ This environment deploys the minimal backend slice:
 - `POST /v1/parent/families/{familyId}/children/{childId}/pairing-codes`
 - `PUT /v1/parent/families/{familyId}/children/{childId}/policy`
 - `GET /v1/parent/families/{familyId}/children/{childId}/usage?date=YYYY-MM-DD`
+- `GET /v1/parent/families/{familyId}/audit-events`
 - `POST /v1/parent/families/{familyId}/devices/{deviceId}/lock`
 - `POST /v1/parent/families/{familyId}/devices/{deviceId}/unlock`
 - `POST /v1/device/enroll`
@@ -96,6 +97,12 @@ Fetch a basic usage summary as a parent:
 
 ```bash
 curl "$API/v1/parent/families/fam-dev/children/child-dev/usage?date=2026-05-25"   -H "X-Dev-Parent-Token: $DEV_PARENT_TOKEN"
+```
+
+List audit events as a parent:
+
+```bash
+curl "$API/v1/parent/families/fam-dev/audit-events"   -H "X-Dev-Parent-Token: $DEV_PARENT_TOKEN"
 ```
 
 Queue a lock command as a parent:

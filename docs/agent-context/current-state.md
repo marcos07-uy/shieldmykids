@@ -89,6 +89,7 @@ The minimal backend supports:
 - Accept authenticated device heartbeats with lightweight status metadata.
 - Accept authenticated raw usage event batches with event-level idempotency.
 - Queue manual lock/unlock commands, return queued commands to authenticated devices, and accept command acknowledgements.
+- Record and list audit events for enrollment, policy updates, command queueing, and command acknowledgements.
 - Let an enrolled device fetch its current effective policy.
 
 Routes:
@@ -97,6 +98,7 @@ Routes:
 POST /v1/parent/families/{familyId}/children/{childId}/pairing-codes
 PUT  /v1/parent/families/{familyId}/children/{childId}/policy
 GET  /v1/parent/families/{familyId}/children/{childId}/usage
+GET  /v1/parent/families/{familyId}/audit-events
 POST /v1/parent/families/{familyId}/devices/{deviceId}/lock
 POST /v1/parent/families/{familyId}/devices/{deviceId}/unlock
 POST /v1/device/enroll
@@ -141,6 +143,8 @@ Usage event idempotency is currently scoped by `deviceId#eventId`.
 
 Manual lock/unlock commands are queued, returned by device command polling, and can be acknowledged by authenticated devices.
 
+Audit events are recorded for policy updates, device enrollment, manual command queueing, and device command acknowledgements. The current parent audit route lists events by family using the temporary development parent token.
+
 ## Repository Workflow
 
 Branch protection has been configured manually in GitHub:
@@ -160,7 +164,7 @@ Local validation performed:
 - Python syntax parse passed.
 - Focused unittest suite passed:
   - `python3 -m unittest tests/backend/lambda/minimal_api/test_app.py`
-  - 24 tests passed as of 2026-05-25 after PR #9 merged.
+  - 35 tests passed locally on the audit-events branch after PR #11 merged.
 - Local mocked Lambda flow covers:
   - create pairing code
   - store policy
@@ -168,6 +172,7 @@ Local validation performed:
   - heartbeat
   - usage event ingestion and duplicate event handling
   - parent usage summary
+  - audit event recording and listing
   - command polling
   - manual lock/unlock command queueing and acknowledgement
   - fetch policy with valid device credential
@@ -189,6 +194,7 @@ Local validation performed:
   - PR #7: parent usage summary endpoint, also brought usage ingestion onto `main`.
   - PR #8: device command polling skeleton.
   - PR #9: manual device command queueing.
+  - PR #11: device command acknowledgement.
 
 Local sandbox note:
 
@@ -214,8 +220,8 @@ Not allowed before approval:
 
 ## Recommended Next Steps
 
-1. Add audit events for enrollment, policy updates, command queueing, and command acknowledgements.
-2. Run and review `terraform plan` from the separate AWS-credentialed deployment machine before any `apply`.
-3. Replace temporary parent token auth with Cognito when moving beyond dev review.
-4. Decide whether the next broader backend slice should remain in Python or move to TypeScript/shared contracts before adding substantial new APIs.
+1. Run and review `terraform plan` from the separate AWS-credentialed deployment machine before any `apply`.
+2. Replace temporary parent token auth with Cognito when moving beyond dev review.
+3. Decide whether the next broader backend slice should remain in Python or move to TypeScript/shared contracts before adding substantial new APIs.
+4. Add deeper policy evaluation only after the runtime/auth boundary is decided.
 5. Start Windows agent design/implementation in C#/.NET only after backend plan review and explicit approval to expand beyond the current backend slice.

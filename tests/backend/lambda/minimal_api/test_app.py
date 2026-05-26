@@ -59,6 +59,9 @@ class FakeTable:
         if IndexName == "deviceId-index" and KeyConditionExpression == "deviceId = :deviceId":
             device_id = ExpressionAttributeValues[":deviceId"]
             return {"Items": [item.copy() for item in self.items.values() if item.get("deviceId") == device_id]}
+        if IndexName == "familyId-index" and KeyConditionExpression == "familyId = :familyId":
+            family_id = ExpressionAttributeValues[":familyId"]
+            return {"Items": [item.copy() for item in self.items.values() if item.get("familyId") == family_id]}
         raise AssertionError("unsupported query")
 
 
@@ -70,6 +73,7 @@ class FakeDynamoDb:
             "pairing_codes": FakeTable("codeHash"),
             "usage_events": FakeTable("deviceEventId"),
             "device_commands": FakeTable("commandId"),
+            "audit_events": FakeTable("auditId"),
         }
 
     def Table(self, name):
@@ -89,6 +93,7 @@ class MinimalApiTest(unittest.TestCase):
                 "PAIRING_CODES_TABLE_NAME": "pairing_codes",
                 "USAGE_EVENTS_TABLE_NAME": "usage_events",
                 "DEVICE_COMMANDS_TABLE_NAME": "device_commands",
+                "AUDIT_EVENTS_TABLE_NAME": "audit_events",
                 "DEV_PARENT_TOKEN": "parent-token",
                 "DEFAULT_SYNC_INTERVAL_SECONDS": "60",
                 "PAIRING_CODE_TTL_SECONDS": "900",
@@ -131,6 +136,9 @@ class MinimalApiTest(unittest.TestCase):
     def body(self, response):
         return json.loads(response["body"])
 
+    def audit_events(self):
+        return list(self.fake_dynamodb.tables["audit_events"].items.values())
+
     def create_pairing_code(self):
         event = self.request(
             "POST /v1/parent/families/{familyId}/children/{childId}/pairing-codes",
@@ -171,6 +179,24 @@ class MinimalApiTest(unittest.TestCase):
         self.assertEqual("child_1", payload["policy"]["childId"])
         self.assertEqual("fam_1", payload["policy"]["familyId"])
         self.assertEqual(60, payload["syncIntervalSeconds"])
+
+    def test_enrollment_records_audit_event(self):
+        pairing_code = self.create_pairing_code()
+        enrollment = self.enroll_device(pairing_code)
+
+        events = self.audit_events()
+        self.assertEqual(1, len(events))
+        event = events[0]
+        self.assertEqual("fam_1", event["familyId"])
+        self.assertEqual("device", event["actorType"])
+        self.assertEqual(enrollment["deviceId"], event["actorId"])
+        self.assertEqual("device.enrolled", event["action"])
+        self.assertEqual("device", event["targetType"])
+        self.assertEqual(enrollment["deviceId"], event["targetId"])
+        self.assertEqual("child_1", event["metadata"]["childId"])
+        self.assertEqual("windows", event["metadata"]["platform"])
+        self.assertEqual("Kid laptop", event["metadata"]["deviceName"])
+        self.assertIn("timestamp", event)
 
     def test_invalid_device_credential_is_rejected(self):
         pairing_code = self.create_pairing_code()
@@ -522,6 +548,35 @@ class MinimalApiTest(unittest.TestCase):
         self.assertEqual("Parent override", command["reason"])
         self.assertIsNone(command["expiresAt"])
 
+    def test_parent_command_queueing_records_audit_event(self):
+        pairing_code = self.create_pairing_code()
+        enrollment = self.enroll_device(pairing_code)
+
+        response = self.app.handler(
+            self.request(
+                "POST /v1/parent/families/{familyId}/devices/{deviceId}/lock",
+                "POST",
+                body={"reason": "Homework time"},
+                headers={"X-Dev-Parent-Token": "parent-token"},
+                path_params={"familyId": "fam_1", "deviceId": enrollment["deviceId"]},
+            ),
+            None,
+        )
+
+        self.assertEqual(201, response["statusCode"])
+        command = self.body(response)["command"]
+        command_events = [
+            event for event in self.audit_events() if event["action"] == "device_command.queued"
+        ]
+        self.assertEqual(1, len(command_events))
+        event = command_events[0]
+        self.assertEqual("parent", event["actorType"])
+        self.assertEqual("dev-parent", event["actorId"])
+        self.assertEqual("device_command", event["targetType"])
+        self.assertEqual(command["commandId"], event["targetId"])
+        self.assertEqual(enrollment["deviceId"], event["metadata"]["deviceId"])
+        self.assertEqual("lock", event["metadata"]["commandType"])
+
     def test_parent_command_requires_dev_parent_token(self):
         pairing_code = self.create_pairing_code()
         enrollment = self.enroll_device(pairing_code)
@@ -605,6 +660,18 @@ class MinimalApiTest(unittest.TestCase):
         self.assertEqual(enrollment["deviceId"], command["acknowledgedByDeviceId"])
         self.assertIn("acknowledgedAt", command)
         self.assertEqual([], self.body(poll_response)["commands"])
+
+        ack_events = [
+            event for event in self.audit_events() if event["action"] == "device_command.acknowledged"
+        ]
+        self.assertEqual(1, len(ack_events))
+        event = ack_events[0]
+        self.assertEqual("device", event["actorType"])
+        self.assertEqual(enrollment["deviceId"], event["actorId"])
+        self.assertEqual("device_command", event["targetType"])
+        self.assertEqual(command_id, event["targetId"])
+        self.assertEqual("applied", event["metadata"]["status"])
+        self.assertEqual("lock", event["metadata"]["commandType"])
 
     def test_device_command_acknowledgement_defaults_to_acknowledged(self):
         pairing_code = self.create_pairing_code()
@@ -915,6 +982,70 @@ class MinimalApiTest(unittest.TestCase):
         self.assertEqual(400, invalid_response["statusCode"])
         self.assertEqual("invalid_date", self.body(invalid_response)["error"]["code"])
 
+    def test_parent_can_list_family_audit_events(self):
+        pairing_code = self.create_pairing_code()
+        enrollment = self.enroll_device(pairing_code)
+        self.app.handler(
+            self.request(
+                "PUT /v1/parent/families/{familyId}/children/{childId}/policy",
+                "PUT",
+                body={"rules": {"dailyLimitMinutes": 90}, "version": 7},
+                headers={"X-Dev-Parent-Token": "parent-token"},
+                path_params={"familyId": "fam_1", "childId": "child_1"},
+            ),
+            None,
+        )
+        self.fake_dynamodb.tables["audit_events"].put_item(
+            Item={
+                "auditId": "audit_other_family",
+                "familyId": "fam_2",
+                "actorType": "parent",
+                "actorId": "dev-parent",
+                "action": "policy.updated",
+                "targetType": "policy",
+                "targetId": "policy_child_1",
+                "timestamp": "2026-05-25T15:00:00Z",
+                "metadata": {},
+            }
+        )
+
+        response = self.app.handler(
+            self.request(
+                "GET /v1/parent/families/{familyId}/audit-events",
+                "GET",
+                headers={"X-Dev-Parent-Token": "parent-token"},
+                path_params={"familyId": "fam_1"},
+            ),
+            None,
+        )
+
+        self.assertEqual(200, response["statusCode"])
+        payload = self.body(response)
+        self.assertEqual("fam_1", payload["familyId"])
+        self.assertEqual(
+            {"policy.updated", "device.enrolled"},
+            {event["action"] for event in payload["auditEvents"]},
+        )
+        self.assertEqual(2, len(payload["auditEvents"]))
+        enrolled_events = [
+            event for event in payload["auditEvents"] if event["action"] == "device.enrolled"
+        ]
+        self.assertEqual(enrollment["deviceId"], enrolled_events[0]["targetId"])
+
+    def test_parent_audit_events_require_dev_parent_token(self):
+        response = self.app.handler(
+            self.request(
+                "GET /v1/parent/families/{familyId}/audit-events",
+                "GET",
+                headers={"X-Dev-Parent-Token": "wrong"},
+                path_params={"familyId": "fam_1"},
+            ),
+            None,
+        )
+
+        self.assertEqual(401, response["statusCode"])
+        self.assertEqual("parent_auth_required", self.body(response)["error"]["code"])
+
     def test_base64_json_body_is_accepted_for_policy_update(self):
         event = self.request(
             "PUT /v1/parent/families/{familyId}/children/{childId}/policy",
@@ -930,6 +1061,30 @@ class MinimalApiTest(unittest.TestCase):
         payload = self.body(response)
         self.assertEqual(7, payload["policy"]["version"])
         self.assertEqual(90, payload["policy"]["rules"]["dailyLimitMinutes"])
+
+    def test_policy_update_records_audit_event(self):
+        response = self.app.handler(
+            self.request(
+                "PUT /v1/parent/families/{familyId}/children/{childId}/policy",
+                "PUT",
+                body={"rules": {"dailyLimitMinutes": 75}, "version": 3},
+                headers={"X-Dev-Parent-Token": "parent-token"},
+                path_params={"familyId": "fam_1", "childId": "child_1"},
+            ),
+            None,
+        )
+
+        self.assertEqual(200, response["statusCode"])
+        events = self.audit_events()
+        self.assertEqual(1, len(events))
+        event = events[0]
+        self.assertEqual("parent", event["actorType"])
+        self.assertEqual("dev-parent", event["actorId"])
+        self.assertEqual("policy.updated", event["action"])
+        self.assertEqual("policy", event["targetType"])
+        self.assertEqual("policy_child_1", event["targetId"])
+        self.assertEqual("child_1", event["metadata"]["childId"])
+        self.assertEqual(3, event["metadata"]["version"])
 
 
 if __name__ == "__main__":

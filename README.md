@@ -44,6 +44,7 @@ The first implementation slice is limited to the minimal backend needed to:
 - Accept device heartbeats and raw usage event batches.
 - Queue manual lock/unlock commands, return queued commands to authenticated devices, and accept command acknowledgements.
 - Return a basic parent usage summary from raw usage events.
+- Record and list audit events for policy changes, enrollment, command queueing, and command acknowledgements.
 - Let that device fetch its current effective policy.
 
 Parent authentication is temporarily represented by a development header token. Cognito remains the intended production parent authentication path.
