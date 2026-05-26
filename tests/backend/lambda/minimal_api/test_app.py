@@ -33,8 +33,15 @@ class FakeTable:
         if "#status" in UpdateExpression:
             status_name = ExpressionAttributeNames["#status"]
             item[status_name] = ExpressionAttributeValues[":status"]
-            item["consumedAt"] = ExpressionAttributeValues[":consumedAt"]
-            item["consumedByDeviceId"] = ExpressionAttributeValues[":deviceId"]
+            if ":consumedAt" in ExpressionAttributeValues:
+                item["consumedAt"] = ExpressionAttributeValues[":consumedAt"]
+            if ":deviceId" in ExpressionAttributeValues:
+                item["consumedByDeviceId"] = ExpressionAttributeValues[":deviceId"]
+            if ":acknowledgedAt" in ExpressionAttributeValues:
+                item["acknowledgedAt"] = ExpressionAttributeValues[":acknowledgedAt"]
+                item["acknowledgedByDeviceId"] = ExpressionAttributeValues[":acknowledgedByDeviceId"]
+                item["errorCode"] = ExpressionAttributeValues[":errorCode"]
+                item["diagnostics"] = ExpressionAttributeValues[":diagnostics"]
             return {}
 
         if not UpdateExpression.startswith("SET "):
@@ -550,6 +557,205 @@ class MinimalApiTest(unittest.TestCase):
 
         self.assertEqual(404, response["statusCode"])
         self.assertEqual("device_not_found", self.body(response)["error"]["code"])
+
+    def test_device_command_acknowledgement_updates_command_status(self):
+        pairing_code = self.create_pairing_code()
+        enrollment = self.enroll_device(pairing_code)
+        lock_response = self.app.handler(
+            self.request(
+                "POST /v1/parent/families/{familyId}/devices/{deviceId}/lock",
+                "POST",
+                body={"reason": "Homework time"},
+                headers={"X-Dev-Parent-Token": "parent-token"},
+                path_params={"familyId": "fam_1", "deviceId": enrollment["deviceId"]},
+            ),
+            None,
+        )
+        command_id = self.body(lock_response)["command"]["commandId"]
+
+        ack_response = self.app.handler(
+            self.request(
+                "POST /v1/device/commands/{commandId}/ack",
+                "POST",
+                body={"status": "applied"},
+                headers={
+                    "Authorization": f"Device {enrollment['deviceCredential']}",
+                    "X-Device-Id": enrollment["deviceId"],
+                },
+                path_params={"commandId": command_id},
+            ),
+            None,
+        )
+        poll_response = self.app.handler(
+            self.request(
+                "GET /v1/device/commands",
+                "GET",
+                headers={
+                    "Authorization": f"Device {enrollment['deviceCredential']}",
+                    "X-Device-Id": enrollment["deviceId"],
+                },
+            ),
+            None,
+        )
+
+        self.assertEqual(200, ack_response["statusCode"])
+        command = self.body(ack_response)["command"]
+        self.assertEqual(command_id, command["commandId"])
+        self.assertEqual("applied", command["status"])
+        self.assertEqual(enrollment["deviceId"], command["acknowledgedByDeviceId"])
+        self.assertIn("acknowledgedAt", command)
+        self.assertEqual([], self.body(poll_response)["commands"])
+
+    def test_device_command_acknowledgement_defaults_to_acknowledged(self):
+        pairing_code = self.create_pairing_code()
+        enrollment = self.enroll_device(pairing_code)
+        lock_response = self.app.handler(
+            self.request(
+                "POST /v1/parent/families/{familyId}/devices/{deviceId}/lock",
+                "POST",
+                body={},
+                headers={"X-Dev-Parent-Token": "parent-token"},
+                path_params={"familyId": "fam_1", "deviceId": enrollment["deviceId"]},
+            ),
+            None,
+        )
+        command_id = self.body(lock_response)["command"]["commandId"]
+
+        response = self.app.handler(
+            self.request(
+                "POST /v1/device/commands/{commandId}/ack",
+                "POST",
+                body={},
+                headers={
+                    "Authorization": f"Device {enrollment['deviceCredential']}",
+                    "X-Device-Id": enrollment["deviceId"],
+                },
+                path_params={"commandId": command_id},
+            ),
+            None,
+        )
+
+        self.assertEqual(200, response["statusCode"])
+        self.assertEqual("acknowledged", self.body(response)["command"]["status"])
+
+    def test_device_command_acknowledgement_records_failure_details(self):
+        pairing_code = self.create_pairing_code()
+        enrollment = self.enroll_device(pairing_code)
+        lock_response = self.app.handler(
+            self.request(
+                "POST /v1/parent/families/{familyId}/devices/{deviceId}/lock",
+                "POST",
+                body={},
+                headers={"X-Dev-Parent-Token": "parent-token"},
+                path_params={"familyId": "fam_1", "deviceId": enrollment["deviceId"]},
+            ),
+            None,
+        )
+        command_id = self.body(lock_response)["command"]["commandId"]
+
+        response = self.app.handler(
+            self.request(
+                "POST /v1/device/commands/{commandId}/ack",
+                "POST",
+                body={
+                    "status": "failed",
+                    "errorCode": "lock_failed",
+                    "diagnostics": "session already ending",
+                },
+                headers={
+                    "Authorization": f"Device {enrollment['deviceCredential']}",
+                    "X-Device-Id": enrollment["deviceId"],
+                },
+                path_params={"commandId": command_id},
+            ),
+            None,
+        )
+
+        self.assertEqual(200, response["statusCode"])
+        command = self.body(response)["command"]
+        self.assertEqual("failed", command["status"])
+        self.assertEqual("lock_failed", command["errorCode"])
+        self.assertEqual("session already ending", command["diagnostics"])
+
+    def test_device_command_acknowledgement_rejects_invalid_status(self):
+        pairing_code = self.create_pairing_code()
+        enrollment = self.enroll_device(pairing_code)
+        lock_response = self.app.handler(
+            self.request(
+                "POST /v1/parent/families/{familyId}/devices/{deviceId}/lock",
+                "POST",
+                body={},
+                headers={"X-Dev-Parent-Token": "parent-token"},
+                path_params={"familyId": "fam_1", "deviceId": enrollment["deviceId"]},
+            ),
+            None,
+        )
+        command_id = self.body(lock_response)["command"]["commandId"]
+
+        response = self.app.handler(
+            self.request(
+                "POST /v1/device/commands/{commandId}/ack",
+                "POST",
+                body={"status": "done"},
+                headers={
+                    "Authorization": f"Device {enrollment['deviceCredential']}",
+                    "X-Device-Id": enrollment["deviceId"],
+                },
+                path_params={"commandId": command_id},
+            ),
+            None,
+        )
+
+        self.assertEqual(400, response["statusCode"])
+        self.assertEqual("invalid_command_status", self.body(response)["error"]["code"])
+
+    def test_device_command_acknowledgement_rejects_wrong_device(self):
+        first_pairing_code = self.create_pairing_code()
+        first_enrollment = self.enroll_device(first_pairing_code)
+        second_pairing_code = self.create_pairing_code()
+        second_enrollment = self.enroll_device(second_pairing_code)
+        lock_response = self.app.handler(
+            self.request(
+                "POST /v1/parent/families/{familyId}/devices/{deviceId}/lock",
+                "POST",
+                body={},
+                headers={"X-Dev-Parent-Token": "parent-token"},
+                path_params={"familyId": "fam_1", "deviceId": first_enrollment["deviceId"]},
+            ),
+            None,
+        )
+        command_id = self.body(lock_response)["command"]["commandId"]
+
+        response = self.app.handler(
+            self.request(
+                "POST /v1/device/commands/{commandId}/ack",
+                "POST",
+                body={"status": "applied"},
+                headers={
+                    "Authorization": f"Device {second_enrollment['deviceCredential']}",
+                    "X-Device-Id": second_enrollment["deviceId"],
+                },
+                path_params={"commandId": command_id},
+            ),
+            None,
+        )
+
+        self.assertEqual(404, response["statusCode"])
+        self.assertEqual("command_not_found", self.body(response)["error"]["code"])
+
+    def test_device_command_acknowledgement_requires_device_auth(self):
+        response = self.app.handler(
+            self.request(
+                "POST /v1/device/commands/{commandId}/ack",
+                "POST",
+                body={"status": "applied"},
+                path_params={"commandId": "cmd_missing"},
+            ),
+            None,
+        )
+
+        self.assertEqual(401, response["statusCode"])
+        self.assertEqual("device_auth_required", self.body(response)["error"]["code"])
 
     def test_device_commands_requires_device_auth(self):
         response = self.app.handler(self.request("GET /v1/device/commands", "GET"), None)

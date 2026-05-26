@@ -11,6 +11,7 @@ This environment deploys the minimal backend slice:
 - `POST /v1/device/heartbeat`
 - `POST /v1/device/usage-events`
 - `GET /v1/device/commands`
+- `POST /v1/device/commands/{commandId}/ack`
 - `GET /v1/device/policy`
 
 ## Review First
@@ -118,6 +119,14 @@ Fetch commands as a device:
 
 ```bash
 curl "$API/v1/device/commands"   -H "Authorization: Device $DEVICE_CREDENTIAL"   -H "X-Device-Id: $DEVICE_ID"
+```
+
+Acknowledge a command as a device:
+
+```bash
+curl -X POST "$API/v1/device/commands/$COMMAND_ID/ack"   -H "Authorization: Device $DEVICE_CREDENTIAL"   -H "X-Device-Id: $DEVICE_ID"   -H "Content-Type: application/json"   -d '{
+    "status": "applied"
+  }'
 ```
 
 Fetch policy as a device:
