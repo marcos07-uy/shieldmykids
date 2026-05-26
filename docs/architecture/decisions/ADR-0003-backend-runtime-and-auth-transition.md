@@ -2,11 +2,11 @@
 
 ## Status
 
-Proposed.
+Accepted for the narrow Phase 1 minimal backend slice.
 
 ## Context
 
-The Phase 1 minimal backend slice currently uses a Python Lambda behind API Gateway HTTP API. It supports only the narrow development workflow for pairing codes, policy storage, device enrollment, and device policy fetch.
+The Phase 1 minimal backend slice currently uses a Python Lambda behind API Gateway HTTP API. It supports the narrow development workflow for pairing codes, policy storage, device enrollment, device heartbeat, usage event ingestion, usage summary, command polling, manual lock/unlock command queueing, command acknowledgements, audit event recording, audit event listing, and device policy fetch.
 
 The broader product direction prefers TypeScript for backend and shared contracts, but replacing the current Lambda immediately would slow validation of the existing minimal slice.
 
@@ -19,6 +19,12 @@ Keep the current Python minimal API Lambda for the existing Phase 1 slice while 
 - Creating short-lived pairing codes.
 - Storing or updating a child policy.
 - Enrolling a device with a pairing code.
+- Accepting device heartbeats.
+- Accepting raw usage events.
+- Returning a basic parent usage summary.
+- Queueing manual lock/unlock commands.
+- Returning and acknowledging device commands.
+- Recording and listing audit events.
 - Returning the current policy to an enrolled device.
 
 Before expanding the backend beyond this slice, make a separate implementation decision for the broader backend runtime and shared contract strategy. The preferred direction remains TypeScript for backend services and shared API contracts unless a later ADR changes that.

@@ -18,7 +18,7 @@ Do not expand implementation beyond the current minimal backend slice or deploy 
 
 ## Phase 1 Backend Backlog
 
-1. Select backend runtime and framework. Started with Python Lambda for minimal slice; broader backend choice still needs ADR.
+1. Select backend runtime and framework. ADR-0004 keeps Python for local hardening of the current minimal slice before first dev deployment review; broader TypeScript/shared-contract work remains deferred.
 2. Select schema validation approach.
 3. Define local development workflow.
 4. Create backend project skeleton. Started for minimal Lambda only.
