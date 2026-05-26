@@ -28,6 +28,11 @@ output "device_commands_table_name" {
   value       = aws_dynamodb_table.device_commands.name
 }
 
+output "audit_events_table_name" {
+  description = "DynamoDB table storing family audit events."
+  value       = aws_dynamodb_table.audit_events.name
+}
+
 output "lambda_function_name" {
   description = "Minimal API Lambda function name."
   value       = aws_lambda_function.minimal_api.function_name

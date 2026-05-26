@@ -37,7 +37,7 @@ Do not expand implementation beyond the current minimal backend slice or deploy 
 17. Implement policy evaluation.
 18. Implement command queue. Started with manual lock/unlock queueing and device polling.
 19. Implement command acknowledgement. Started.
-20. Implement audit events.
+20. Implement audit events. Started for enrollment, policy updates, command queueing, command acknowledgements, and family audit listing.
 21. Implement basic aggregation. Started for per-day raw event totals; overlap merging remains deferred.
 22. Add unit tests.
 23. Add authorization tests.

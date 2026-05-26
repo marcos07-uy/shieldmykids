@@ -40,13 +40,14 @@ Current backend capabilities:
 - Accept device heartbeats and raw usage event batches.
 - Queue manual lock/unlock commands, return queued commands to authenticated devices, and accept command acknowledgements.
 - Return a basic parent usage summary from raw usage events.
+- Record and list audit events for enrollment, policy updates, command queueing, and command acknowledgements.
 - Let an enrolled device fetch its current effective policy.
 
 Current local tests:
 
 - `tests/backend/lambda/minimal_api/test_app.py`
 - `python3 -m unittest tests/backend/lambda/minimal_api/test_app.py`
-- 24 tests passed on local `main` after PR #9 merged.
+- 35 tests passed locally on the audit-events branch after PR #11 merged.
 
 Agents may create or update:
 
@@ -78,12 +79,7 @@ Agents must not deploy infrastructure or mutate AWS resources without explicit u
 
 ## Current Recommended Next Step
 
-Add focused audit events for the current minimal backend slice:
-
-- Enrollment.
-- Policy updates.
-- Manual command queueing.
-- Device command acknowledgements.
+After audit events merge, review a Terraform plan from the separate AWS-credentialed deployment machine before any apply. For local-only development, the next likely backend decision is replacing the temporary parent token with Cognito or deciding the broader backend runtime/shared-contract direction before adding substantial new APIs.
 
 Keep command execution/enforcement behavior in agents out of scope until explicitly approved.
 
