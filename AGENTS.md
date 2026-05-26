@@ -97,13 +97,22 @@ Completed recently:
 - Registered the Terraform status check with PR #1 and selected the `Terraform fmt and validate` required check.
 - Merged PR #1 after the Terraform PR workflow completed successfully.
 - Fixed repo-local Git SSH key selection for pushes from this machine.
+- Added focused unit tests for the minimal API Lambda.
+- Added ADR-0003 documenting the backend runtime and authentication transition boundary.
+- Added device heartbeat support.
+- Added raw usage event ingestion with device-scoped event idempotency.
+- Added a basic parent usage summary endpoint from raw usage events.
+- Added authenticated device command polling.
+- Added manual parent lock/unlock command queueing for enrolled devices.
+- Fixed the local `bwrap` sandbox issue by setting `kernel.apparmor_restrict_unprivileged_userns = 0`; local sandboxed file edits and tests now work normally.
 
 Current recommended next engineering tasks:
 
-1. Add focused tests for `backend/lambda/minimal_api/app.py`.
-2. Decide whether to keep Python for this Lambda slice or record an ADR for a TypeScript/shared-contract backend direction.
-3. Review the Terraform plan before any `terraform apply`.
+1. Add device command acknowledgement: `POST /v1/device/commands/{commandId}/ack`.
+2. Add focused audit events for enrollment, policy updates, and command queueing.
+3. Review a Terraform plan from the separate AWS-credentialed machine before any `terraform apply`.
 4. Replace temporary `X-Dev-Parent-Token` authentication with Cognito when approved.
+5. Decide whether the next broader backend slice should remain in Python or move to TypeScript/shared contracts before adding substantial new APIs.
 
 ## Safety Constraints
 

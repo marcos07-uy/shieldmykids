@@ -42,6 +42,12 @@ Current backend capabilities:
 - Return a basic parent usage summary from raw usage events.
 - Let an enrolled device fetch its current effective policy.
 
+Current local tests:
+
+- `tests/backend/lambda/minimal_api/test_app.py`
+- `python3 -m unittest tests/backend/lambda/minimal_api/test_app.py`
+- 24 tests passed on local `main` after PR #9 merged.
+
 Agents may create or update:
 
 - Documentation and ADRs.
@@ -68,6 +74,19 @@ Agents must not deploy infrastructure or mutate AWS resources without explicit u
 - Terraform-related PRs must pass the `Terraform fmt and validate` check from the `Terraform PR Checks` workflow.
 - PR #1 registered the Terraform status check and was merged after it passed.
 - Local Git SSH access is configured repo-locally with `core.sshCommand` using `~/.ssh/github`; SSH fetch and dry-run push have succeeded.
+- Local sandboxed file edits were fixed by setting `kernel.apparmor_restrict_unprivileged_userns = 0`; avoid reverting that workstation setting unless an alternative sandbox configuration is available.
+
+## Current Recommended Next Step
+
+Add device command acknowledgement:
+
+- Route: `POST /v1/device/commands/{commandId}/ack`
+- Use existing device authentication.
+- Verify the command belongs to the authenticated device.
+- Mark the command acknowledged/applied/failed in the command table.
+- Add focused tests for valid acknowledgement, wrong device, missing auth, invalid credential, and unknown command.
+
+Keep command execution/enforcement behavior in agents out of scope until explicitly approved.
 
 ## Recommended Technical Direction
 

@@ -34,7 +34,7 @@ main
 
 ## Project Status
 
-Initial documentation baseline is complete. The project has moved into the first implementation slice: minimal backend infrastructure and Lambda API for policy/device enrollment.
+Initial documentation baseline is complete. The project is in the first implementation slice: minimal backend infrastructure and Lambda API for parent policy, device enrollment, device polling, raw usage reporting, basic usage summaries, and manual command queueing.
 
 The folder is a Git repository. Local `main` tracks `origin/main` at `git@github.com:marcos07-uy/shieldmykids.git`.
 
@@ -73,6 +73,7 @@ Repo hygiene and automation:
 ```text
 .gitignore
 .github/workflows/terraform-pr.yml
+tests/backend/lambda/minimal_api/test_app.py
 ```
 
 README was updated to mark Phase 0 documentation complete and describe the current implementation boundary.
@@ -117,6 +118,13 @@ Infrastructure uses the documented serverless polling MVP direction:
 
 The Lambda is Python. This is only backend Lambda code. The future Windows agent should not be Python by default; use C#/.NET for the Windows Service plus visible tray/status helper.
 
+ADR-0003 records the current runtime/auth transition decision:
+
+- Keep the Python minimal API Lambda for the narrow Phase 1 slice.
+- Prefer TypeScript/shared contracts before broader backend expansion unless a later ADR changes that.
+- Keep `X-Dev-Parent-Token` local/dev-only.
+- Replace parent auth with Cognito before real parent/dashboard use.
+
 Parent authentication is temporarily represented by `X-Dev-Parent-Token`. This is for development only. Cognito remains the intended production parent authentication path.
 
 Device authentication uses:
@@ -127,6 +135,10 @@ X-Device-Id: <deviceId>
 ```
 
 Pairing codes and device credentials are stored as SHA-256 hashes in DynamoDB.
+
+Usage event idempotency is currently scoped by `deviceId#eventId`.
+
+Manual lock/unlock commands are queued and returned by device command polling. Command acknowledgement is not implemented yet.
 
 ## Repository Workflow
 
@@ -145,10 +157,18 @@ No infrastructure was deployed.
 Local validation performed:
 
 - Python syntax parse passed.
-- Local mocked Lambda flow passed:
+- Focused unittest suite passed:
+  - `python3 -m unittest tests/backend/lambda/minimal_api/test_app.py`
+  - 24 tests passed as of 2026-05-25 after PR #9 merged.
+- Local mocked Lambda flow covers:
   - create pairing code
   - store policy
   - enroll device
+  - heartbeat
+  - usage event ingestion and duplicate event handling
+  - parent usage summary
+  - command polling
+  - manual lock/unlock command queueing
   - fetch policy with valid device credential
   - reject invalid device credential
 - Generated Python bytecode cache was removed.
@@ -160,6 +180,20 @@ Local validation performed:
 - GitHub Actions PR validation passed in PR #1:
   - `Terraform PR Checks / Terraform fmt and validate`
 - Git SSH access was fixed repo-locally with `core.sshCommand` using `~/.ssh/github`.
+- Recent merged PRs:
+  - PR #3: minimal API tests and handoff doc cleanup.
+  - PR #4: ADR-0003 backend runtime/auth transition.
+  - PR #5: device heartbeat endpoint.
+  - PR #6: raw usage event ingestion, merged through the stacked branch.
+  - PR #7: parent usage summary endpoint, also brought usage ingestion onto `main`.
+  - PR #8: device command polling skeleton.
+  - PR #9: manual device command queueing.
+
+Local sandbox note:
+
+- The local Codex/bubblewrap sandbox was failing with `bwrap: loopback: Failed RTM_NEWADDR: Operation not permitted`.
+- The user fixed it by setting `kernel.apparmor_restrict_unprivileged_userns = 0` and persisted that setting in `/etc/sysctl.d/99-codex-bwrap.conf`.
+- Sandboxed local file edits and validation commands now work normally.
 
 ## User Boundary For Next Session
 
@@ -179,8 +213,8 @@ Not allowed before approval:
 
 ## Recommended Next Steps
 
-1. Add tests for the Lambda handler with a proper test harness instead of an inline mock script.
-2. Decide whether to keep Python for this Lambda slice or record an ADR for a TypeScript/shared-contract backend direction.
-3. Run and review `terraform plan` with the user before any `apply`.
+1. Add device command acknowledgement: `POST /v1/device/commands/{commandId}/ack`.
+2. Add audit events for enrollment, policy updates, and command queueing.
+3. Run and review `terraform plan` from the separate AWS-credentialed deployment machine before any `apply`.
 4. Replace temporary parent token auth with Cognito when moving beyond dev review.
 5. Start Windows agent design/implementation in C#/.NET only after backend plan review and explicit approval to expand beyond the current backend slice.
