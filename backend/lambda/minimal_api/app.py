@@ -731,9 +731,6 @@ def response(status_code, body):
         "statusCode": status_code,
         "headers": {
             "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Headers": "Authorization,Content-Type,X-Device-Id,X-Dev-Parent-Token",
-            "Access-Control-Allow-Methods": "GET,POST,PUT,OPTIONS",
         },
         "body": "" if body is None else json.dumps(body, default=json_default),
     }
