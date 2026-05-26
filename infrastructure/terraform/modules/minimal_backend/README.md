@@ -8,7 +8,7 @@ This module provisions the first backend slice for Shield My Kids:
 - DynamoDB table for raw usage events.
 - DynamoDB table for queued device commands.
 - Python Lambda implementing minimal parent and device APIs.
-- API Gateway HTTP API exposing the Lambda, including pairing, usage summary, manual lock/unlock command queueing, enrollment, heartbeat, usage event ingestion, command polling, and policy fetch routes.
+- API Gateway HTTP API exposing the Lambda, including pairing, usage summary, manual lock/unlock command queueing, enrollment, heartbeat, usage event ingestion, command polling, command acknowledgement, and policy fetch routes.
 - CloudWatch log groups with explicit retention.
 
 ## Development Auth Boundary

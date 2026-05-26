@@ -38,7 +38,7 @@ Current backend capabilities:
 - Store or update a child policy.
 - Enroll a device by exchanging a pairing code for a device credential.
 - Accept device heartbeats and raw usage event batches.
-- Queue manual lock/unlock commands and return queued commands to authenticated devices.
+- Queue manual lock/unlock commands, return queued commands to authenticated devices, and accept command acknowledgements.
 - Return a basic parent usage summary from raw usage events.
 - Let an enrolled device fetch its current effective policy.
 
@@ -78,13 +78,12 @@ Agents must not deploy infrastructure or mutate AWS resources without explicit u
 
 ## Current Recommended Next Step
 
-Add device command acknowledgement:
+Add focused audit events for the current minimal backend slice:
 
-- Route: `POST /v1/device/commands/{commandId}/ack`
-- Use existing device authentication.
-- Verify the command belongs to the authenticated device.
-- Mark the command acknowledged/applied/failed in the command table.
-- Add focused tests for valid acknowledgement, wrong device, missing auth, invalid credential, and unknown command.
+- Enrollment.
+- Policy updates.
+- Manual command queueing.
+- Device command acknowledgements.
 
 Keep command execution/enforcement behavior in agents out of scope until explicitly approved.
 

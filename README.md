@@ -42,7 +42,7 @@ The first implementation slice is limited to the minimal backend needed to:
 - Create a short-lived pairing code.
 - Enroll a device.
 - Accept device heartbeats and raw usage event batches.
-- Queue manual lock/unlock commands and return queued commands to authenticated devices.
+- Queue manual lock/unlock commands, return queued commands to authenticated devices, and accept command acknowledgements.
 - Return a basic parent usage summary from raw usage events.
 - Let that device fetch its current effective policy.
 

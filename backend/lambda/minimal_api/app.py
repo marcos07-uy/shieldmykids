@@ -82,6 +82,10 @@ def handler(event, _context):
             device = require_device(event)
             return get_device_commands(device)
 
+        if route_key == "POST /v1/device/commands/{commandId}/ack":
+            device = require_device(event)
+            return acknowledge_device_command(device, path_params, parse_body(event))
+
         if route_key == "GET /v1/device/policy":
             device = require_device(event)
             return get_device_policy(device)
@@ -400,6 +404,46 @@ def query_queued_commands_for_device(device_id):
     return sorted(commands, key=lambda command: command["createdAt"])
 
 
+def acknowledge_device_command(device, path_params, body):
+    now = epoch_seconds()
+    command_id = require_path_param(path_params, "commandId")
+    command = DEVICE_COMMANDS_TABLE.get_item(Key={"commandId": command_id}).get("Item")
+    if not command or command.get("deviceId") != device["deviceId"]:
+        raise HttpError(404, "command_not_found", "Command was not found for this device.")
+
+    ack_status = optional_string(body, "status") or "acknowledged"
+    if ack_status not in {"acknowledged", "applied", "failed"}:
+        raise HttpError(400, "invalid_command_status", "Command status must be acknowledged, applied, or failed.")
+
+    values = {
+        ":status": ack_status,
+        ":acknowledgedAt": iso_time(now),
+        ":acknowledgedByDeviceId": device["deviceId"],
+        ":errorCode": optional_string(body, "errorCode"),
+        ":diagnostics": optional_string(body, "diagnostics"),
+    }
+    DEVICE_COMMANDS_TABLE.update_item(
+        Key={"commandId": command_id},
+        UpdateExpression=(
+            "SET #status = :status, acknowledgedAt = :acknowledgedAt, "
+            "acknowledgedByDeviceId = :acknowledgedByDeviceId, errorCode = :errorCode, "
+            "diagnostics = :diagnostics"
+        ),
+        ExpressionAttributeNames={"#status": "status"},
+        ExpressionAttributeValues=values,
+    )
+
+    updated_command = {
+        **command,
+        "status": ack_status,
+        "acknowledgedAt": values[":acknowledgedAt"],
+        "acknowledgedByDeviceId": device["deviceId"],
+        "errorCode": values[":errorCode"],
+        "diagnostics": values[":diagnostics"],
+    }
+    return response(200, {"command": public_command_ack(updated_command)})
+
+
 def public_command(command):
     return {
         "commandId": command["commandId"],
@@ -409,6 +453,19 @@ def public_command(command):
         "expiresAt": command.get("expiresAt"),
         "createdAt": command["createdAt"],
     }
+
+
+def public_command_ack(command):
+    payload = public_command(command)
+    payload.update(
+        {
+            "acknowledgedAt": command.get("acknowledgedAt"),
+            "acknowledgedByDeviceId": command.get("acknowledgedByDeviceId"),
+            "errorCode": command.get("errorCode"),
+            "diagnostics": command.get("diagnostics"),
+        }
+    )
+    return payload
 
 
 def update_device_heartbeat(device_id, body, now):

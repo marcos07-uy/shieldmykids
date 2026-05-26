@@ -88,7 +88,7 @@ The minimal backend supports:
 - Enroll a device by exchanging a pairing code for a device credential.
 - Accept authenticated device heartbeats with lightweight status metadata.
 - Accept authenticated raw usage event batches with event-level idempotency.
-- Queue manual lock/unlock commands and return queued commands to authenticated devices.
+- Queue manual lock/unlock commands, return queued commands to authenticated devices, and accept command acknowledgements.
 - Let an enrolled device fetch its current effective policy.
 
 Routes:
@@ -103,6 +103,7 @@ POST /v1/device/enroll
 POST /v1/device/heartbeat
 POST /v1/device/usage-events
 GET  /v1/device/commands
+POST /v1/device/commands/{commandId}/ack
 GET  /v1/device/policy
 ```
 
@@ -138,7 +139,7 @@ Pairing codes and device credentials are stored as SHA-256 hashes in DynamoDB.
 
 Usage event idempotency is currently scoped by `deviceId#eventId`.
 
-Manual lock/unlock commands are queued and returned by device command polling. Command acknowledgement is not implemented yet.
+Manual lock/unlock commands are queued, returned by device command polling, and can be acknowledged by authenticated devices.
 
 ## Repository Workflow
 
@@ -168,7 +169,7 @@ Local validation performed:
   - usage event ingestion and duplicate event handling
   - parent usage summary
   - command polling
-  - manual lock/unlock command queueing
+  - manual lock/unlock command queueing and acknowledgement
   - fetch policy with valid device credential
   - reject invalid device credential
 - Generated Python bytecode cache was removed.
@@ -213,8 +214,8 @@ Not allowed before approval:
 
 ## Recommended Next Steps
 
-1. Add device command acknowledgement: `POST /v1/device/commands/{commandId}/ack`.
-2. Add audit events for enrollment, policy updates, and command queueing.
-3. Run and review `terraform plan` from the separate AWS-credentialed deployment machine before any `apply`.
-4. Replace temporary parent token auth with Cognito when moving beyond dev review.
+1. Add audit events for enrollment, policy updates, command queueing, and command acknowledgements.
+2. Run and review `terraform plan` from the separate AWS-credentialed deployment machine before any `apply`.
+3. Replace temporary parent token auth with Cognito when moving beyond dev review.
+4. Decide whether the next broader backend slice should remain in Python or move to TypeScript/shared contracts before adding substantial new APIs.
 5. Start Windows agent design/implementation in C#/.NET only after backend plan review and explicit approval to expand beyond the current backend slice.

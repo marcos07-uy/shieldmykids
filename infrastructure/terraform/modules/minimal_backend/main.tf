@@ -336,6 +336,12 @@ resource "aws_apigatewayv2_route" "get_device_commands" {
   target    = "integrations/${aws_apigatewayv2_integration.minimal_api.id}"
 }
 
+resource "aws_apigatewayv2_route" "ack_device_command" {
+  api_id    = aws_apigatewayv2_api.minimal.id
+  route_key = "POST /v1/device/commands/{commandId}/ack"
+  target    = "integrations/${aws_apigatewayv2_integration.minimal_api.id}"
+}
+
 resource "aws_apigatewayv2_route" "get_device_policy" {
   api_id    = aws_apigatewayv2_api.minimal.id
   route_key = "GET /v1/device/policy"
